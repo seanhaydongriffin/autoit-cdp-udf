@@ -65,7 +65,8 @@ Func Curl_Ws_Recv($Handle, $iMax = 4096)
     Return SetExtended($rc, BinaryToString($bin))
 EndFunc
 
-Func Curl_Get($url, $Slist, $username = "", $password = "")
+;Func Curl_Get($url, $Slist, $username = "", $password = "")
+Func Curl_Get($url, $username = "", $password = "")
 	Local $Curl = Curl_Easy_Init()
 	If Not $Curl Then Return
 	;$iBufferSize = 32 ;128
@@ -90,7 +91,7 @@ Func Curl_Get($url, $Slist, $username = "", $password = "")
 	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEFILE, $CookieFile)
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
-	Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
+	;Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
 	Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)
 
 	;peer verification
