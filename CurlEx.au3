@@ -1,27 +1,43 @@
+#AutoIt3Wrapper_UseX64=y
 #include-once
+
 #include "Curl.au3"
 
 Global $CookieFile = "cookie.txt"
-
 
 Func Curl_Setopt_Websocket($Handle)
 	Return DllCall($g_hlibcurl, (@AutoItX64 ? "int" : "int:cdecl"), "curl_easy_setopt", "ptr", $Handle, "int", $CURLOPT_CONNECT_ONLY, "long", 2)[0]
 EndFunc
 
 Func Curl_Ws_Send($Handle, $Data)
+    $Data = Binary($Data)
+    Local $DataLen = BinaryLen($Data)
 
-	$Data = Binary($Data)
-	Local $DataLen = BinaryLen($Data)
-	Local $tBuffer = DllStructCreate("byte[" & $DataLen & "]")
-	DllStructSetData($tBuffer, 1, $Data)
+    Local $tBuffer = DllStructCreate("byte[" & $DataLen & "]")
+    DllStructSetData($tBuffer, 1, $Data)
 
-	Local $sent = 0
+    Local $sent = 0
 
-	Local $Ret = DllCall($g_hlibcurl, (@AutoItX64 ? "int" : "int:cdecl"), "curl_ws_send", "ptr", $Handle, "struct*", $tBuffer, "uint_ptr", $DataLen, "uint_ptr*", $sent, "int64", 0, "uint", 1)
-	Local $SendLen = $Ret[4]
-	Return SetExtended($Ret[0], $SendLen)
+    Local $Ret = DllCall($g_hlibcurl, (@AutoItX64 ? "int" : "int:cdecl"), "curl_ws_send", _
+        "ptr",       $Handle, _
+        "ptr",       DllStructGetPtr($tBuffer), _
+        "uint_ptr",  $DataLen, _
+        "uint_ptr*", $sent, _
+        "int64",     0, _
+        "uint",      1)
+
+    If @error Then
+        ConsoleWrite("WS SEND: DllCall error = " & @error & @CRLF)
+		$tBuffer = 0
+        Return SetError(1, @error, 0)
+    EndIf
+
+    Local $rc      = $Ret[0]
+    Local $SentLen = $Ret[4]
+
+	$tBuffer = 0
+    Return SetExtended($SentLen, $rc)
 EndFunc
-
 
 Func Curl_Ws_Recv($Handle, $iMax = 4096)
     Local $tBuffer = DllStructCreate("byte[" & $iMax & "]")
@@ -45,12 +61,9 @@ Func Curl_Ws_Recv($Handle, $iMax = 4096)
     Local $bin = DllStructGetData($tBuffer, 1)
     $bin = BinaryMid($bin, 1, $ReadBytes)
 
+	$tBuffer = 0
     Return SetExtended($rc, BinaryToString($bin))
 EndFunc
-
-
-
-
 
 Func Curl_Get($url, $Slist, $username = "", $password = "")
 	Local $Curl = Curl_Easy_Init()
@@ -156,7 +169,6 @@ Func Curl_Post($url, $Slist, $Post, $username = "", $password = "")
 
 	return $response
 EndFunc
-
 
 Func Curl_UploadFile($url, $Slist, $filepath, $username = "", $password = "")
     Local $Curl = Curl_Easy_Init()

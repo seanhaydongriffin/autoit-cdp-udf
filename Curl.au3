@@ -1,3 +1,6 @@
+#AutoIt3Wrapper_UseX64=y
+#include-once
+
 ; ============================================================================================================================
 ; File		: Curl.au3 (2022.03.25)
 ; Purpose	: libcurl with x64 support
@@ -54,8 +57,6 @@
 ;   Curl_Data_Cleanup($Handle)
 ;   Curl_Slist_ToArray($List)
 ; ============================================================================================================================
-
-#include-once
 
 #Region constants
 Global Const $CURL_SOCKET_BAD = -1
@@ -1558,8 +1559,8 @@ EndFunc   ;==>__Curl_FileReadCallback
 
 
 Func __Curl_DllOpen()
-	$g_hlibcurl = DllOpen(@AutoItX64 ? 'libcurl-x64.dll' : 'libcurl.dll')
-	If $g_hlibcurl = -1 Then MsgBox(16, 'ERROR', 'Error opening ' & (@AutoItX64 ? 'libcurl-x64.dll' : 'libcurl.dll'))
+	$g_hlibcurl = DllOpen('libcurl-x64.dll')
+	If $g_hlibcurl = -1 Then MsgBox(16, 'ERROR', 'Error opening libcurl-x64.dll')
 	OnAutoItExitRegister(__Curl_DllClose)
 EndFunc   ;==>__Curl_DllOpen
 
