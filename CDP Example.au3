@@ -14,6 +14,30 @@ ElementAttributes()
 Exit
 
 
+Func ElementAttributes()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchStandardBrowser()
+	Local $page    = $browser.page()
+
+	$page.Goto("https://testpages.eviltester.com")
+
+	$page.locate("//a[@href='/pages/']").click(True)
+	$page.locate("//a[@href='/pages/basics/']").click(True)
+	$page.locate("//a[@href='/pages/basics/element-attribute-examples/']").click(True)
+
+	$page.locate("//p[@id='domattributes']").textContent().expect.toBe("This paragraph has attributes")
+	$page.locate("//p[@id='jsattributes']").textContent().expect.toBe("This paragraph has dynamic attributes")
+	$page.locate("//p[@id='jsattributes']").getAttribute("nextid").expect.toBe(1)
+	$page.locate("//button[@id='add-attribute-button']").click()
+	$page.locate("//p[@id='jsattributes']").getAttribute("nextid").expect.toBe(2)
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> ElementAttributes() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
 Func BasicWebPageWithStandardBrowser()
 
 	Local $hTimer = TimerInit()
@@ -69,47 +93,35 @@ EndFunc
 Func BasicWebPage($browser, $page)
 
 	$page.Goto("https://testpages.eviltester.com")
-	$page.locate("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges")
+	$page.locate("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
+	$page.locate("//head/title").innerText().expect.toBe("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
+	$page.locate("//head/title").expect.toBeHidden(@ScriptLineNumber)
+	$page.locate("//head/title").isVisible().expect.toBe(False, @ScriptLineNumber)
+	$page.locate("//head/title").isHidden().expect.toBe(True, @ScriptLineNumber)
 
 	$pages_link = $page.locate("xpath=//a[@href='/pages/']")
-	$pages_link.expect.toHaveText("Pages")
-
+	$pages_link.textContent().expect.toBe("Pages", @ScriptLineNumber)
+	$pages_link.expect.toBeVisible(@ScriptLineNumber)
+	$pages_link.isVisible().expect.toBe(True, @ScriptLineNumber)
+	$pages_link.isHidden().expect.toBe(False, @ScriptLineNumber)
 	$pages_link.click(True)
-	$page.locate("//a[@href='/pages/basics/']/span").expect.toHaveText("Basics", @ScriptLineNumber)
+
+	$page.locate("//a[@href='/pages/basics/']/span").innerHTML().expect.toBe("Basics", @ScriptLineNumber)
 	$page.locate("//a[@href='/pages/basics/']").click(True)
 	$page.locate("//a[@href='/pages/basics/basic-web-page/']").click(True)
 
 	$page.locate("css=header.article-meta").expect.toContainText("Elements", @ScriptLineNumber)
-	$page.locate("//p[@id='para1']").expect.toHaveText("A paragraph of text")
-	$page.locate("//p[@id='para2']").expect.toHaveText("Another paragraph of text")
+	$page.locate("css=header.article-meta").innerText().expect.toContain("Elements", @ScriptLineNumber)
+	$page.locate("//p[@id='para1']").innerText().expect.toBe("A paragraph of text", @ScriptLineNumber)
+	$page.locate("//p[@id='para2']").innerText().expect.toBe("Another paragraph of text", @ScriptLineNumber)
 
 	$page.locate("//button[@id='button1']").click()
-	$clickMessage = $page.locate("//p[@id='click-message']").expect.toHaveText("You clicked the button!")
+	$clickMessage = $page.locate("//p[@id='click-message']").innerText().expect.toBe("You clicked the button!", @ScriptLineNumber)
 
 	$browser.close()
 
 EndFunc
 
-
-Func ElementAttributes()
-
-	Local $hTimer = TimerInit()
-
-	Local $browser = LaunchStandardBrowser()
-	Local $page    = $browser.page()
-
-	$page.Goto("https://testpages.eviltester.com")
-
-	$page.locate("xpath=//a[@href='/pages/']").click(True)
-	$page.locate("//a[@href='/pages/basics/']").click(True)
-	$page.locate("//a[@href='/pages/basics/element-attribute-examples/']").click(True)
-
-	$browser.close()
-
-	Local $fDiff = TimerDiff($hTimer)
-	ConsoleWrite(@CRLF & "> ElementAttributes() took " & $fDiff & " ms." & @CRLF & @CRLF)
-
-EndFunc
 
 Func LaunchStandardBrowser()
 	Return $cdp.browserLaunch(Default, 9299, Default, Default, "1280,800")
@@ -139,7 +151,7 @@ EndFunc
 
 ;Local $browser2 = $cdp.browserAttach(9299)
 ;Local $page2    = $browser2.page()
-;$page2.locator("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges")
+;$page2.locator("//head/title").expect.toBe("Software Testing Practice Pages, Apps, and Challenges")
 ;Exit
 
 

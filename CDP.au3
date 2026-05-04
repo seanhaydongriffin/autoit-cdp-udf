@@ -486,9 +486,72 @@ Func _CDP_Page_Evaluate($oSelf, $expression)
 
 EndFunc
 
+Func __CDP_Perform_Search($selector)
+
+	for $i = 1 to 2
+
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("query", $selector)
+		Local $resp = _CDP_SendSync("DOM.performSearch", $oParams)
+
+		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+		Local $searchIdObj = _JsonC_ObjectObjectGet($resultObj, "searchId")
+		Local $searchIdVal = _JsonC_ObjectGetValue($searchIdObj)
+		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $searchIdVal = ' & $searchIdVal & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("searchId", $searchIdVal)
+		$oParams.Add("fromIndex", 0)
+		$oParams.Add("toIndex", 1)
+		Local $resp = _CDP_SendSync("DOM.getSearchResults", $oParams)
+
+		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+		Local $nodeIdsObj = _JsonC_ObjectObjectGet($resultObj, "nodeIds")
+		$nodeIds = _JsonC_ObjectArrayGetObjects($nodeIdsObj)
+
+		For $nodeId in $nodeIds
+			$nodeIdVal = _JsonC_ObjectGetValue($nodeId)
+			if $nodeIdVal = 0 Then ExitLoop
+			return $nodeIdVal
+		Next
+
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("depth", -1)
+		Local $resp = _CDP_SendSync("DOM.getDocument", $oParams)
+
+	Next
+
+	Return Null
+
+EndFunc
+
+
+Func __CDP_Object_To_Node($objectId)
+
+	for $i = 1 to 2
+
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("objectId", $objectId)
+		Local $resp = _CDP_SendSync("DOM.requestNode", $oParams)
+
+		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+		Local $nodeIdObj = _JsonC_ObjectObjectGet($resultObj, "nodeId")
+		Local $nodeIdVal = _JsonC_ObjectGetValue($nodeIdObj)
+
+		if $nodeIdVal <> 0 Then Return $nodeIdVal
+
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("depth", -1)
+		_CDP_SendSync("DOM.getDocument", $oParams)
+
+	Next
+EndFunc
+
+
 Func _CDP_Page_Locate($oSelf, $selector)
 
     Local $type = ""
+	Local $nodeIdVal = Null
 
     ; Explicit prefixes
     If StringLeft($selector, 6) = "xpath=" Then
@@ -544,19 +607,36 @@ Func _CDP_Page_Locate($oSelf, $selector)
 			; Add methods
 
 			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
+			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")
 			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
 			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
 			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
 			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
-			_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_ToHaveText")
-			_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_ToContainText")
+			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")
+			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")
+			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")
+			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
+			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
+
+			_AutoItObject_AddMethod($oExpect, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
+			_AutoItObject_AddMethod($oExpect, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
+			_AutoItObject_AddMethod($oExpect, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")
+			_AutoItObject_AddMethod($oExpect, "toBeDisabled", "_CDP_Expect_Locator_ToBeDisabled")
+			_AutoItObject_AddMethod($oExpect, "toBeChecked", "_CDP_Expect_Locator_ToBeChecked")
+			_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
+			_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_Locator_ToContainText")
+			_AutoItObject_AddMethod($oExpect, "toHaveAttribute", "_CDP_Expect_Locator_ToHaveAttribute")
+			_AutoItObject_AddMethod($oExpect, "toHaveValue", "_CDP_Expect_Locator_ToHaveValue")
+			_AutoItObject_AddMethod($oExpect, "toHaveCount", "_CDP_Expect_Locator_ToHaveCount")
 
 			; Add properties
 
 			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
+			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, Null)
 			_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
-			_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
+
+			_AutoItObject_AddProperty($oExpect, "parent", $ELSCOPE_PUBLIC, $oLocator)
 
 			Return $oLocator
 		EndIf
@@ -626,15 +706,13 @@ Func _CDP_Page_LocateNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
 	_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
 	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
-	_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_ToHaveText")
-	_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_ToContainText")
 
 	; Add properties
 
 	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
 	_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
-	_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
+	;_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
 
 	Return $oLocator
 
@@ -648,6 +726,49 @@ EndFunc
 ; Locator_Resolve()
 ; Locator_GetAttribute()
 ; Locator_IsVisible()
+
+
+Func ValueObj($value)
+
+	; string object
+    Local $o = _AutoItObject_Create()
+    _AutoItObject_AddProperty($o, "value", $ELSCOPE_PUBLIC, $value)
+    _AutoItObject_AddProperty($o, "__default__", $ELSCOPE_PUBLIC, $value)
+
+    ; expect object
+    Local $expect = _AutoItObject_Create()
+    _AutoItObject_AddMethod($expect, "toBe", "_CDP_Expect_Value_ToBe")
+    ;_AutoItObject_AddMethod($expect, "toHaveText", "_CDP_Expect_ToHaveText")
+    ;_AutoItObject_AddMethod($expect, "toContainText", "_CDP_Expect_ToContainText")
+    _AutoItObject_AddMethod($expect, "toEqual", "_CDP_Expect_Value_ToEqual")
+    _AutoItObject_AddMethod($expect, "toContain", "_CDP_Expect_Value_ToContain")
+    _AutoItObject_AddMethod($expect, "toBeTruthy", "_CDP_Expect_Value_ToBeTruthy")
+    _AutoItObject_AddMethod($expect, "toBeFalsy", "_CDP_Expect_Value_ToBeFalsy")
+
+	_AutoItObject_AddProperty($expect, "parent", $ELSCOPE_PUBLIC, $o)
+	_AutoItObject_AddProperty($o, "expect", $ELSCOPE_PUBLIC, $expect)
+
+    Return $o
+EndFunc
+
+
+Func _CDP_Locator_TextContent($oSelf)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("functionDeclaration", "function() { return this.textContent; }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
+
+    Return ValueObj($valueVal)
+
+EndFunc
 
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
@@ -682,7 +803,7 @@ Func _CDP_Locator_InnerText($oSelf)
 
 	$oSelf.value = $valueVal
 
-    Return $valueVal
+    Return ValueObj($valueVal)
 EndFunc
 
 Func _CDP_Locator_InnerTextCRStripped($oSelf)
@@ -698,6 +819,96 @@ EndFunc
 Func _CDP_Locator_InnerTextReplace($oSelf, $searchString, $replaceString)
 	$text = _CDP_Locator_InnerText($oSelf)
 	Return StringReplace($text, $searchString, $replaceString)
+EndFunc
+
+Func _CDP_Locator_InnerHTML($oSelf)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("functionDeclaration", "function() { return this.innerHTML; }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    ; Extract the "result.value"
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
+
+	;$oSelf.value = $valueVal
+
+    Return ValueObj($valueVal)
+EndFunc
+
+Func _CDP_Locator_InputValue($oSelf)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("functionDeclaration", "function() { return this.value; }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    ; Extract the "result.value"
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
+
+	;$oSelf.value = $valueVal
+
+    Return ValueObj($valueVal)
+EndFunc
+
+Func _CDP_Locator_GetAttribute($oSelf, $name)
+
+    Local $oParams = _CDP_NewParams()
+	$oSelf.nodeId = __CDP_Object_To_Node($oSelf.objectId)
+    $oParams.Add("nodeId", $oSelf.nodeId)
+
+    Local $resp = _CDP_SendSync("DOM.getAttributes", $oParams)
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $attributesObj = _JsonC_ObjectObjectGet($resultObj, "attributes")
+
+	Local $getNextAttribute = False
+	$attributes = _JsonC_ObjectArrayGetObjects($attributesObj)
+	For $attribute in $attributes
+		$attributeVal = _JsonC_ObjectGetValue($attribute)
+		if $getNextAttribute = True Then Return ValueObj($attributeVal)
+		if $attributeVal = $name Then $getNextAttribute = True
+	Next
+
+	Return Null
+EndFunc
+
+Func __CDP_Locator_IsVisibleValue($objectId)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $objectId)
+    $oParams.Add("functionDeclaration", "function() { const r = this.getBoundingClientRect(); return !!(r.width && r.height); }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    ; Extract the "result.value"
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    Return _JsonC_ObjectGetValue($valueObj)
+
+EndFunc
+
+Func _CDP_Locator_IsVisible($oSelf)
+
+	$val = __CDP_Locator_IsVisibleValue($oSelf.objectId) <> 0
+    Return ValueObj($val)
+EndFunc
+
+Func _CDP_Locator_IsHidden($oSelf)
+
+	$val = Not ( __CDP_Locator_IsVisibleValue($oSelf.objectId) <> 0 )
+    Return ValueObj($val)
 EndFunc
 
 #endregion
@@ -729,79 +940,105 @@ Page‑level assertions
 
     toHaveURL()
 
-Locator‑level assertions
-
-    toBeVisible()
-
-    toBeHidden()
-
-    toBeEnabled()
-
-    toBeDisabled()
-
-    toBeChecked()
-
-    toHaveText()
-
-    toContainText()
-
-    toHaveAttribute()
-
-    toHaveValue()
-
-    toHaveCount()
-
-Value assertions
-
-    toBe()
-
-    toEqual()
-
-    toContain()
-
-    toBeTruthy()
-
-    toBeFalsy()
 
 #ce
 
 
-#cs
-Func expect($target)
+Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "?")
 
-	; Create Expect object
+	if _CDP_Locator_IsVisible($self.parent).value Then
 
-	Local $oExpect = _AutoItObject_Create()
-
-	; Add methods
-	_AutoItObject_AddMethod($oExpect, "toHaveText", "Expect_ToHaveText")
-
-	; Add properties
-	_AutoItObject_AddProperty($oExpect, "targetObject", $ELSCOPE_PUBLIC, $target)
-	_AutoItObject_AddProperty($oExpect, "value", $ELSCOPE_PUBLIC, "")
-
-	Return $oExpect
-
-EndFunc
-#ce
-
-Func _CDP_Expect_ToHaveText($oSelf, $expected, $scriptLineNumber = "?")
-
-	$actual = $oSelf.target.innerText()
-
-	If $actual = $expected Then
-		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : expected [' & $expected & '] and got [' & $actual & ']' & @CRLF)
-        Return True
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is visible" & @CRLF)
+		Return True
     EndIf
 
-	ConsoleWrite('! Fail (line ' & $scriptLineNumber & ') : expected [' & $expected & '] but got [' & $actual & ']' & @CRLF)
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is not visible" & @CRLF)
     Return False
 
 EndFunc
 
-Func _CDP_Expect_ToContainText($oSelf, $expected, $scriptLineNumber = "?")
+Func _CDP_Expect_Locator_ToBeHidden($self, $scriptLineNumber = "?")
 
-	$actual = $oSelf.target.innerText()
+	if _CDP_Locator_IsHidden($self.parent).value Then
+
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is hidden" & @CRLF)
+		Return True
+    EndIf
+
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is not hidden" & @CRLF)
+    Return False
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToBeEnabled($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToBeDisabled($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToBeChecked($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToHaveText($self, $expected, $scriptLineNumber = "?")
+
+	Local $actual = _CDP_Locator_TextContent($self.parent).value
+
+	If $actual = $expected Then
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
+		Return True
+    EndIf
+
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : expected [" & $expected & "] but got [" & $actual & "]" & @CRLF)
+    Return False
+EndFunc
+
+Func _CDP_Expect_Locator_ToContainText($self, $expected, $scriptLineNumber = "?")
+
+	Local $actual = _CDP_Locator_TextContent($self.parent).value
+
+	If StringInStr($actual, $expected) > 0 Then
+		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
+        Return True
+    EndIf
+
+	ConsoleWrite('! Fail (line ' & $scriptLineNumber & ') : expected actual text to contain [' & $expected & '] but got [' & $actual & ']' & @CRLF)
+    Return False
+EndFunc
+
+Func _CDP_Expect_Locator_ToHaveAttribute($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToHaveValue($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Locator_ToHaveCount($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Value_ToBe($self, $expected, $scriptLineNumber = "?")
+    Local $actual = $self.parent.value
+    If $actual = $expected Then
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
+		Return True
+    EndIf
+
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : expected [" & $expected & "] but got [" & $actual & "]" & @CRLF)
+    Return False
+
+EndFunc
+
+Func _CDP_Expect_Value_ToEqual($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Value_ToContain($self, $expected, $scriptLineNumber = "?")
+
+    Local $actual = $self.parent.value
 
 	If StringInStr($actual, $expected) > 0 Then
 		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
@@ -812,6 +1049,15 @@ Func _CDP_Expect_ToContainText($oSelf, $expected, $scriptLineNumber = "?")
     Return False
 
 EndFunc
+
+Func _CDP_Expect_Value_ToBeTruthy($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
+Func _CDP_Expect_Value_ToBeFalsy($self, $expected, $scriptLineNumber = "?")
+
+EndFunc
+
 
 #endregion
 
@@ -856,6 +1102,12 @@ Func __CDP_ParamsToJson($o)
             $s &= ($v ? "true" : "false") & ","
             ContinueLoop
         EndIf
+
+		If StringLeft($v, 1) = "[" And StringRight($v, 1) = "]" Then
+			; it's wrapped in square brackets
+			$s &= $v
+            ContinueLoop
+		EndIf
 
         Switch VarGetType($v)
             Case "String"

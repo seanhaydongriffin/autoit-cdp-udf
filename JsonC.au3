@@ -644,7 +644,6 @@ Func _JsonC_ObjectArrayGetObjects($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_array_get_objects", "ptr", $pObject)
 	If @error Then Return SetError(1, @error, "") ; DllCall error
 	$ArrayLength = _JsonC_ObjectArrayLength($pObject)
-	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $ArrayLength = ' & $ArrayLength & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 	Local $pObjects[$ArrayLength]
 	For $i = 0 To $ArrayLength - 1
 		Local $ptrObject = DllStructGetData(DllStructCreate("ptr", $avRval[0] + ($i * $PtrSize)), 1)
