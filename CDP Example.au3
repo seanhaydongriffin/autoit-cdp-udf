@@ -1,65 +1,145 @@
-;http://code.msdn.microsoft.com/windowsdesktop/WinHTTP-WebSocket-sample-50a140b5/sourcecode?fileId=51199&pathId=1032775223
 #AutoIt3Wrapper_UseX64=y
 
 #include "CDP.au3"
 
-#cs
+;BasicWebPageWithStandardBrowser()
+;BasicWebPageWithStandardHeadlessBrowser()
 
-chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\Temp\ChromeDebug" --no-first-run --no-default-browser-check
+ElementAttributes()
 
-
-curl http://localhost:9222/json/version
-"webSocketDebuggerUrl": "ws://localhost:9222/devtools/browser/<UUID>"
-
-curl http://localhost:9222/json
-{
-  "id": "D93FB5EC35D60AE9E1B9373D3502EA7B",
-  "title": "Example",
-  "url": "https://example.com",
-  "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/D93FB5EC35D60AE9E1B9373D3502EA7B"
-}
-#ce
-
-Local $hTimer = TimerInit()
-
-;Local $browser = _CDP_BrowserAttach("localhost", 9222, "/devtools/page/D93FB5EC35D60AE9E1B9373D3502EA7B")
-
-;Local $browser = _CDP_BrowserOpen(9299, '--no-first-run --no-default-browser-check', @ScriptDir & '\ChromeDebug', True, 'C:\Users\SGriffin\AppData\Local\ms-playwright\chromium-1217\chrome-win64\chrome.exe')
-
-Local $browser = $cdp.launchBrowser(9299, '--no-first-run --no-default-browser-check', @ScriptDir & '\ChromeDebug', True, 'C:\Users\SGriffin\AppData\Local\ms-playwright\chromium-1217\chrome-win64\chrome.exe')
-Local $page    = $browser.page()
-
-$page.Goto("https://testpages.eviltester.com")
-$page.locator("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges")
-
-$pages_link = $page.locator("xpath=//a[@href='/pages/']")
-$pages_link.expect.toHaveText("Pages")
-
-$pages_link.click(True)
-$page.locator("//a[@href='/pages/basics/']/span").expect.toHaveText("Basics", @ScriptLineNumber)
-$page.locator("//a[@href='/pages/basics/']").click(True)
-$page.locator("//a[@href='/pages/basics/basic-web-page/']").click(True)
-
-$page.locator("css=header.article-meta").expect.toContainText("Elements", @ScriptLineNumber)
-$page.locator("//p[@id='para1']").expect.toHaveText("A paragraph of text")
-$page.locator("//p[@id='para2']").expect.toHaveText("Another paragraph of text")
-
-$page.locator("//button[@id='button1']").click()
-$clickMessage = $page.locator("//p[@id='click-message']").expect.toHaveText("You clicked the button!")
-
-$browser.close()
-
-Local $fDiff = TimerDiff($hTimer)
-ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $fDiff = ' & $fDiff & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+;BasicWebPageWithPlaywrightBrowser()
+;BasicWebPageWithPlaywrightHeadlessBrowser()
 
 
 Exit
 
 
-;$articleMetaText = $page.locator("css=header.article-meta").innerTextReplace(@LF, " ")
+Func BasicWebPageWithStandardBrowser()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchStandardBrowser()
+	Local $page    = $browser.page()
+	BasicWebPage($browser, $page)
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> BasicWebPageWithStandardBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
+Func BasicWebPageWithStandardHeadlessBrowser()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchStandardHeadlessBrowser()
+	Local $page    = $browser.page()
+	BasicWebPage($browser, $page)
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> BasicWebPageWithStandardHeadlessBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
+Func BasicWebPageWithPlaywrightBrowser()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchPlaywrightBrowser()
+	Local $page    = $browser.page()
+	BasicWebPage($browser, $page)
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> BasicWebPageWithPlaywrightBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
+Func BasicWebPageWithPlaywrightHeadlessBrowser()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchPlaywrightHeadlessBrowser()
+	Local $page    = $browser.headlessShell()
+	BasicWebPage($browser, $page)
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> BasicWebPageWithPlaywrightHeadlessBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
+Func BasicWebPage($browser, $page)
+
+	$page.Goto("https://testpages.eviltester.com")
+	$page.locate("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges")
+
+	$pages_link = $page.locate("xpath=//a[@href='/pages/']")
+	$pages_link.expect.toHaveText("Pages")
+
+	$pages_link.click(True)
+	$page.locate("//a[@href='/pages/basics/']/span").expect.toHaveText("Basics", @ScriptLineNumber)
+	$page.locate("//a[@href='/pages/basics/']").click(True)
+	$page.locate("//a[@href='/pages/basics/basic-web-page/']").click(True)
+
+	$page.locate("css=header.article-meta").expect.toContainText("Elements", @ScriptLineNumber)
+	$page.locate("//p[@id='para1']").expect.toHaveText("A paragraph of text")
+	$page.locate("//p[@id='para2']").expect.toHaveText("Another paragraph of text")
+
+	$page.locate("//button[@id='button1']").click()
+	$clickMessage = $page.locate("//p[@id='click-message']").expect.toHaveText("You clicked the button!")
+
+	$browser.close()
+
+EndFunc
+
+
+Func ElementAttributes()
+
+	Local $hTimer = TimerInit()
+
+	Local $browser = LaunchStandardBrowser()
+	Local $page    = $browser.page()
+
+	$page.Goto("https://testpages.eviltester.com")
+
+	$page.locate("xpath=//a[@href='/pages/']").click(True)
+	$page.locate("//a[@href='/pages/basics/']").click(True)
+	$page.locate("//a[@href='/pages/basics/element-attribute-examples/']").click(True)
+
+	$browser.close()
+
+	Local $fDiff = TimerDiff($hTimer)
+	ConsoleWrite(@CRLF & "> ElementAttributes() took " & $fDiff & " ms." & @CRLF & @CRLF)
+
+EndFunc
+
+Func LaunchStandardBrowser()
+	Return $cdp.browserLaunch(Default, 9299, Default, Default, "1280,800")
+EndFunc
+
+Func LaunchStandardHeadlessBrowser()
+	Return $cdp.browserLaunch(Default, 9299, "--headless=new")
+EndFunc
+
+Func LaunchPlaywrightBrowser()
+	Return $cdp.browserLaunch(@LocalAppDataDir & '\ms-playwright\chromium-1217\chrome-win64\chrome.exe', 9299, Default, Default, "1280,800")
+EndFunc
+
+Func LaunchPlaywrightHeadlessBrowser()
+	Return $cdp.browserLaunch(@LocalAppDataDir & '\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe', 9299)
+EndFunc
+
+
+
+
+;$articleMetaText = $page.locate("css=header.article-meta").innerTextReplace(@LF, " ")
 
 ;Local $docTitle = $page.evaluate("document.title")
 ;ConsoleWrite("$docTitle = " & $docTitle & @CRLF)
+;Exit
+
+
+;Local $browser2 = $cdp.browserAttach(9299)
+;Local $page2    = $browser2.page()
+;$page2.locator("//head/title").expect.toHaveText("Software Testing Practice Pages, Apps, and Challenges")
 ;Exit
 
 

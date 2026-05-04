@@ -12,8 +12,9 @@
 #include "JsonC.au3"
 #include "AutoItObject.au3"
 
-Global $hActiveBrowserWs
-Global $hActivePageWs
+Global $hActiveBrowserWs = Null
+Global $hActivePageWs = Null
+Global $hActiveSessionId = Null
 Global $g_iCDP_NextId = 1
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
@@ -32,7 +33,9 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 _JsonC_Startup("json-c.dll")
 _AutoItObject_Startup()
 Local $cdp = _AutoItObject_Create()
-_AutoItObject_AddMethod($cdp, "launchBrowser", "_CDP_Browser_Launch")
+_AutoItObject_AddMethod($cdp, "browserLaunch", "_CDP_Browser_Launch")
+_AutoItObject_AddMethod($cdp, "browserAttach", "_CDP_Browser_Attach")
+AdlibRegister("_CDP_RecvLoop", 5)
 
 #endregion
 
@@ -67,6 +70,9 @@ Func _CDP_SendCommand($sMethod, $oParams = Null)
     $g_iCDP_NextId += 1
 
     Local $sJson = '{"id":' & $iId & ',"method":"' & $sMethod & '"'
+
+	If $hActiveSessionId <> Null Then $sJson &= ',"sessionId":"' & $hActiveSessionId & '"'
+
     If Not IsObj($oParams) Then
         $sJson &= '}'
     Else
@@ -100,6 +106,8 @@ Func _CDP_SendSync($method, $params = Null, $timeout = 2000)
 EndFunc
 
 Func _CDP_RecvLoop()
+
+	if $hActivePageWs = Null Then Return
 
     Local $msg = Curl_Ws_Recv($hActivePageWs)
     Local $rc  = @extended
@@ -199,14 +207,28 @@ EndFunc
 
 #region --- Browser Class ---
 
-Func _CDP_Browser_Launch($oSelf, $port = 9222, $startupSwitches = "--no-first-run --no-default-browser-check", $profile = @TempDir & "\ChromeDebug", $deleteSessions = True, $path = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe")
+Func _CDP_Browser_Launch($oSelf, $path = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
 
-	if $deleteSessions = True Then DirRemove($profile & "\Default\Sessions", 1)
+	if $path = Default Then $path = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
+	if $port = Default Then $port = 9222
+	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking"
+	if $profile = Default Then $profile = @ScriptDir & "\ChromeDebug"
+	if $windowSize <> Default Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
+
+	if Not FileExists($path) Then
+        ConsoleWrite('Browser path ' & $path & ' not found. Exiting.' & @CRLF)
+        Exit
+	EndIf
+
+	; always delete previous sessions in the user profile
+	;	to simplify detection of the correct websocket
+	DirRemove($profile & "\Default\Sessions", 1)
 
 	Local $cmd = '"' & $path & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
     Run($cmd)
     Sleep(500) ; give Chrome time to start
 
+#cs
 	; Get the browser level websocket
 
 	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
@@ -224,6 +246,35 @@ Func _CDP_Browser_Launch($oSelf, $port = 9222, $startupSwitches = "--no-first-ru
 	; Connect to the browser level websocket
 
 	$hActiveBrowserWs = _CDP_Connect($browserWsUrl)
+	#ce
+
+	$hActiveBrowserWs = __CDP_Browser_Connect($port)
+	ConsoleWrite("Browser WebSocket Handle: " & $hActiveBrowserWs & @CRLF)
+
+    ; Create Browser object
+
+    Local $oBrowser = _AutoItObject_Create()
+
+    ; Add methods
+
+    _AutoItObject_AddMethod($oBrowser, "page", "_CDP_Browser_NewPage")
+    _AutoItObject_AddMethod($oBrowser, "headlessShell", "_CDP_Browser_NewHeadlessShell")
+    _AutoItObject_AddMethod($oBrowser, "close", "_CDP_Browser_Close")
+
+    ; Add properties
+
+    ;_AutoItObject_AddProperty($oBrowser, "wsUrl", $ELSCOPE_PUBLIC, $browserWsUrl)
+    _AutoItObject_AddProperty($oBrowser, "wsPort", $ELSCOPE_PUBLIC, $port)
+    _AutoItObject_AddProperty($oBrowser, "wsHandle", $ELSCOPE_PUBLIC, $hActiveBrowserWs)
+
+    Return $oBrowser
+EndFunc
+
+Func _CDP_Browser_Attach($oSelf, $port = 9222)
+
+	; Connect to CDP
+
+	$hActiveBrowserWs = __CDP_Browser_Connect($port)
 
     ; Create Browser object
 
@@ -236,51 +287,42 @@ Func _CDP_Browser_Launch($oSelf, $port = 9222, $startupSwitches = "--no-first-ru
 
     ; Add properties
 
-    _AutoItObject_AddProperty($oBrowser, "wsUrl", $ELSCOPE_PUBLIC, $browserWsUrl)
+    ;_AutoItObject_AddProperty($oBrowser, "wsUrl", $ELSCOPE_PUBLIC, $browserWsUrl)
     _AutoItObject_AddProperty($oBrowser, "wsPort", $ELSCOPE_PUBLIC, $port)
     _AutoItObject_AddProperty($oBrowser, "wsHandle", $ELSCOPE_PUBLIC, $hActiveBrowserWs)
 
     Return $oBrowser
 EndFunc
 
-Func _CDP_Browser_Attach($host, $port, $path)
-    ; 1. Connect to CDP
-    ;_CDP_Connect($host, $port, $path)
+Func __CDP_Browser_Connect($port)
 
+	; Get the browser level websocket
 
-    ; 2. Start the receive loop
-    AdlibRegister("_CDP_RecvLoop", 5)
-    ;AdlibRegister("_CDP_RecvLoop", 20)
+	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
+	Local $pattern = '(?s)"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
+	Local $matches = StringRegExp($resp, $pattern, 1)
 
-    ; 3. Enable core domains
-    _CDP_SendSync("DOM.enable")
-    _CDP_SendSync("Page.enable")
-    _CDP_SendSync("Runtime.enable")
+	If @error Then
+		ConsoleWrite("No browser WebSocket found" & @CRLF)
+		Return
+	EndIf
 
-    ; 4. Create Browser object
+	Local $browserWsUrl = $matches[0]
+	ConsoleWrite("Browser WebSocket URL: " & $browserWsUrl & @CRLF)
 
-	; Create a real AutoItObject COM object
+	; Connect to the browser level websocket
 
-    Local $oBrowser = _AutoItObject_Create()
+	return _CDP_Connect($browserWsUrl)
 
-    ; Add methods
-
-    _AutoItObject_AddMethod($oBrowser, "newPage", "Browser_NewPage")
-
-    ; (Optional) store connection info as properties
-    _AutoItObject_AddProperty($oBrowser, "host", $ELSCOPE_PUBLIC, $host)
-    _AutoItObject_AddProperty($oBrowser, "port", $ELSCOPE_PUBLIC, $port)
-    _AutoItObject_AddProperty($oBrowser, "path", $ELSCOPE_PUBLIC, $path)
-
-    Return $oBrowser
 EndFunc
+
 
 Func _CDP_Browser_NewPage($oSelf)
 
 	; Get the page level websocket
 
 	Local $resp = Curl_Get("http://localhost:" & $oSelf.wsPort & "/json")
-	Local $pattern = '(?s)"type"\s*:\s*"page".+?"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
+	Local $pattern = '(?s)"title"\s*:\s*"New Tab".+?"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
 	Local $matches = StringRegExp($resp, $pattern, 1)
 
 	If @error Then
@@ -294,10 +336,7 @@ Func _CDP_Browser_NewPage($oSelf)
 	; 1. Connect to the page level websocket
 
 	$hActivePageWs = _CDP_Connect($pageWsUrl)
-
-    ; 2. Start the receive loop
-
-    AdlibRegister("_CDP_RecvLoop", 5)
+	ConsoleWrite("Page WebSocket Handle: " & $hActivePageWs & @CRLF)
 
     ; 3. Enable core domains
 
@@ -311,13 +350,79 @@ Func _CDP_Browser_NewPage($oSelf)
 
     ; Add methods
 
-    _AutoItObject_AddMethod($oPage, "goto",     "_CDP_Page_Goto")
-    _AutoItObject_AddMethod($oPage, "evaluate", "_CDP_Page_Evaluate")
-    _AutoItObject_AddMethod($oPage, "locator",  "_CDP_Page_Locator")
+    _AutoItObject_AddMethod($oPage, "goto",      "_CDP_Page_Goto")
+    _AutoItObject_AddMethod($oPage, "evaluate",  "_CDP_Page_Evaluate")
+    _AutoItObject_AddMethod($oPage, "locate",    "_CDP_Page_Locate")
+    _AutoItObject_AddMethod($oPage, "locateNow", "_CDP_Page_LocateNow")
 
     ; Add properties
 
-    _AutoItObject_AddProperty($oPage, "wsUrl", $ELSCOPE_PUBLIC, $pageWsUrl)
+    ;_AutoItObject_AddProperty($oPage, "wsUrl", $ELSCOPE_PUBLIC, $pageWsUrl)
+    _AutoItObject_AddProperty($oPage, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
+    _AutoItObject_AddProperty($oPage, "wsHandle", $ELSCOPE_PUBLIC, $hActivePageWs)
+
+    Return $oPage
+
+EndFunc
+
+Func _CDP_Browser_NewHeadlessShell($oSelf)
+
+	; connect the page level websocket to the browser level websocket
+
+	$hActivePageWs = $oSelf.wsHandle
+	ConsoleWrite("Page WebSocket Handle: " & $hActivePageWs & @CRLF)
+
+	; create a target
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("url", "about:blank")
+    Local $resp = _CDP_SendSync("Target.createTarget", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $targetIdObj = _JsonC_ObjectObjectGet($resultObj, "targetId")
+    Local $targetIdVal = _JsonC_ObjectGetValue($targetIdObj)
+
+	; get the targets
+
+    ;$resp = _CDP_SendSync("Target.getTargets")
+	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $resp = ' & $resp & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+	; attach to the target
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("targetId", $targetIdVal)
+    $oParams.Add("flatten", True)
+    Local $resp = _CDP_SendSync("Target.attachToTarget", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $sessionIdObj = _JsonC_ObjectObjectGet($resultObj, "sessionId")
+    Local $sessionIdVal = _JsonC_ObjectGetValue($sessionIdObj)
+
+	; Set the active session Id to that of the headless-shell
+
+	$hActiveSessionId = $sessionIdVal
+	ConsoleWrite("Page Session Id: " & $hActiveSessionId & @CRLF)
+
+    ; Enable core domains
+
+    _CDP_SendSync("DOM.enable")
+    _CDP_SendSync("Page.enable")
+    _CDP_SendSync("Runtime.enable")
+
+    ; Create Page object
+
+    Local $oPage = _AutoItObject_Create()
+
+    ; Add methods
+
+    _AutoItObject_AddMethod($oPage, "goto",      "_CDP_Page_Goto")
+    _AutoItObject_AddMethod($oPage, "evaluate",  "_CDP_Page_Evaluate")
+    _AutoItObject_AddMethod($oPage, "locate",    "_CDP_Page_Locate")
+    _AutoItObject_AddMethod($oPage, "locateNow", "_CDP_Page_LocateNow")
+
+    ; Add properties
+
+    ;_AutoItObject_AddProperty($oPage, "wsUrl", $ELSCOPE_PUBLIC, $pageWsUrl)
     _AutoItObject_AddProperty($oPage, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
     _AutoItObject_AddProperty($oPage, "wsHandle", $ELSCOPE_PUBLIC, $hActivePageWs)
 
@@ -327,7 +432,23 @@ EndFunc
 
 Func _CDP_Browser_Close($oSelf)
 
+    AdlibUnRegister("_CDP_RecvLoop")
+	Sleep(20)
+
     _CDP_SendCommand("Browser.close")
+	Sleep(500)
+
+	$hActiveBrowserWs = Null
+	$hActivePageWs = Null
+	$hActiveSessionId = Null
+	$g_iCDP_NextId = 1
+
+	$g_CDP_Pending.RemoveAll()
+	$g_PageLoaded = False
+
+	AdlibRegister("_CDP_RecvLoop", 5)
+	Sleep(20)
+
     Return $oSelf
 
 EndFunc
@@ -365,7 +486,7 @@ Func _CDP_Page_Evaluate($oSelf, $expression)
 
 EndFunc
 
-Func _CDP_Page_Locator($oSelf, $selector)
+Func _CDP_Page_Locate($oSelf, $selector)
 
     Local $type = ""
 
@@ -446,6 +567,76 @@ Func _CDP_Page_Locator($oSelf, $selector)
 
 	ConsoleWrite("Timed out." & @CRLF)
 	Exit
+
+EndFunc
+
+Func _CDP_Page_LocateNow($oSelf, $selector)
+
+    Local $type = ""
+
+    ; Explicit prefixes
+    If StringLeft($selector, 6) = "xpath=" Then
+        $type = "xpath"
+        $selector = StringTrimLeft($selector, 6)
+
+    ElseIf StringLeft($selector, 4) = "css=" Then
+        $type = "css"
+        $selector = StringTrimLeft($selector, 4)
+
+    ; Auto-detect XPath
+    ElseIf StringLeft($selector, 2) = "//" Then
+        $type = "xpath"
+
+    ; Auto-detect CSS
+    Else
+        $type = "css"
+    EndIf
+
+    Local $expr = ""
+
+    If $type = "xpath" Then
+		$expr = 'document.evaluate("' & $selector & '", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue'
+    Else
+        $expr = "document.querySelector(`" & $selector & "`)"
+    EndIf
+
+	Local $resp = _CDP_Evaluate($expr)
+
+	;$json_str = _JsonC_ObjectToJsonString($resp)
+	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $json_str = ' & $json_str & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+	; Parse objectId
+	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+	Local $remoteObj = _JsonC_ObjectObjectGet($resultObj, "result")
+	Local $objectIdObj = _JsonC_ObjectObjectGet($remoteObj, "objectId")
+
+	if @error <> 0 Then Return Null
+
+	Local $objectIdVal = _JsonC_ObjectGetValue($objectIdObj)
+
+	; Create the Locator object
+
+	Local $oLocator = _AutoItObject_Create()
+	Local $oExpect = _AutoItObject_Create()
+
+	; Add methods
+
+	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
+	_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
+	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
+	_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
+	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
+	_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_ToHaveText")
+	_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_ToContainText")
+
+	; Add properties
+
+	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
+	_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
+	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
+	_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
+
+	Return $oLocator
 
 EndFunc
 
@@ -629,6 +820,29 @@ EndFunc
 ; String helpers
 ; JSON helpers
 ; Debug helpers
+
+Func _CDP_Downloads_DeleteFile($fileMask)
+	FileDelete(@UserProfileDir & "\Downloads\" & $fileMask)
+EndFunc
+
+Func _CDP_Downloads_WaitForFile($filename, $timeoutMs = 10000)
+    Local $end = TimerInit()
+    While Not FileExists(@UserProfileDir & "\Downloads\" & $filename)
+        Sleep(50)
+        If TimerDiff($end) > $timeoutMs Then Return False
+    WEnd
+    Return True
+EndFunc
+
+Func WaitForFile($path, $timeoutMs = 5000)
+    Local $end = TimerInit()
+    While Not FileExists($path)
+        Sleep(50)
+        If TimerDiff($end) > $timeoutMs Then Return False
+    WEnd
+    Return True
+EndFunc
+
 
 Func __CDP_ParamsToJson($o)
     Local $s = "{", $k
