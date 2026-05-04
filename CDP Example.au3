@@ -2,13 +2,13 @@
 
 #include "CDP.au3"
 
-;BasicWebPageWithStandardBrowser()
-;BasicWebPageWithStandardHeadlessBrowser()
+BasicWebPageWithStandardBrowser()
+BasicWebPageWithStandardHeadlessBrowser()
 
 ElementAttributes()
 
-;BasicWebPageWithPlaywrightBrowser()
-;BasicWebPageWithPlaywrightHeadlessBrowser()
+BasicWebPageWithPlaywrightBrowser()
+BasicWebPageWithPlaywrightHeadlessBrowser()
 
 
 Exit
@@ -32,6 +32,8 @@ Func ElementAttributes()
 	$page.locate("//p[@id='jsattributes']").getAttribute("nextid").expect.toBe(1)
 	$page.locate("//button[@id='add-attribute-button']").click()
 	$page.locate("//p[@id='jsattributes']").getAttribute("nextid").expect.toBe(2)
+
+	$browser.close()
 
 	Local $fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> ElementAttributes() took " & $fDiff & " ms." & @CRLF & @CRLF)
