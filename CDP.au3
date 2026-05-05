@@ -1,5 +1,7 @@
 #AutoIt3Wrapper_UseX64=y
-#include-once
+FileInstall(".\json-c.dll", ".\")
+FileInstall(".\libcurl-x64.dll", ".\")
+FileInstall(".\selenium-manager.exe", ".\")
 
 ; ======================================================================================================================
 ;   AutoIt CDP UDF
@@ -8,6 +10,10 @@
 
 #region --- Core Includes & Globals ---
 
+#include-once
+#include <AutoItConstants.au3>
+#include <StringConstants.au3>
+#include <Array.au3>
 #include "CurlEx.au3"
 #include "JsonC.au3"
 #include "AutoItObject.au3"
@@ -207,16 +213,26 @@ EndFunc
 
 #region --- Browser Class ---
 
-Func _CDP_Browser_Launch($oSelf, $path = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
+Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
 
-	if $path = Default Then $path = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
+	SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
+
+	if $browser = Default Then $browser = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
 	if $port = Default Then $port = 9222
 	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking"
-	if $profile = Default Then $profile = @ScriptDir & "\ChromeDebug"
+	if $profile = Default Then $profile = @ScriptDir & "\chromeprofile"
 	if $windowSize <> Default Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
 
-	if Not FileExists($path) Then
-        ConsoleWrite('Browser path ' & $path & ' not found. Exiting.' & @CRLF)
+    If IsString($browser) And StringInStr($browser, "@") > 0 Then
+		; it's a browser specifier
+		$browserSpecifier = $browser
+		$browser = __CDP_ResolveBrowserSpecifier($browserSpecifier)
+		if @error > 0 Then
+			ConsoleWrite('Browser specifier ' & $browserSpecifier & ' not found. Exiting.' & @CRLF)
+			Exit
+		EndIf
+	ElseIf Not FileExists($browser) Then
+        ConsoleWrite('Browser path ' & $browser & ' not found. Exiting.' & @CRLF)
         Exit
 	EndIf
 
@@ -224,32 +240,18 @@ Func _CDP_Browser_Launch($oSelf, $path = Default, $port = Default, $startupSwitc
 	;	to simplify detection of the correct websocket
 	DirRemove($profile & "\Default\Sessions", 1)
 
-	Local $cmd = '"' & $path & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
+	ConsoleWrite('> Info : Running ' & $browser & @CRLF)
+	ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
+	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
     Run($cmd)
+
+	SplashOff()
+
     Sleep(500) ; give Chrome time to start
 
-#cs
-	; Get the browser level websocket
-
-	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
-	Local $pattern = '(?s)"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
-	Local $matches = StringRegExp($resp, $pattern, 1)
-
-	If @error Then
-		ConsoleWrite("No browser WebSocket found" & @CRLF)
-		Return
-	EndIf
-
-	Local $browserWsUrl = $matches[0]
-	ConsoleWrite("Browser WebSocket URL: " & $browserWsUrl & @CRLF)
-
-	; Connect to the browser level websocket
-
-	$hActiveBrowserWs = _CDP_Connect($browserWsUrl)
-	#ce
-
 	$hActiveBrowserWs = __CDP_Browser_Connect($port)
-	ConsoleWrite("Browser WebSocket Handle: " & $hActiveBrowserWs & @CRLF)
+	ConsoleWrite('> Info : Browser WebSocket Handle: ' & $hActiveBrowserWs & @CRLF)
+
 
     ; Create Browser object
 
@@ -308,7 +310,7 @@ Func __CDP_Browser_Connect($port)
 	EndIf
 
 	Local $browserWsUrl = $matches[0]
-	ConsoleWrite("Browser WebSocket URL: " & $browserWsUrl & @CRLF)
+	ConsoleWrite('> Info : Browser WebSocket Url: ' & $browserWsUrl & @CRLF)
 
 	; Connect to the browser level websocket
 
@@ -331,12 +333,12 @@ Func _CDP_Browser_NewPage($oSelf)
 	EndIf
 
 	Local $pageWsUrl = $matches[0]
-	ConsoleWrite("Page WebSocket URL: " & $pageWsUrl & @CRLF)
+	ConsoleWrite('> Info : Page WebSocket Url: ' & $pageWsUrl & @CRLF)
 
 	; 1. Connect to the page level websocket
 
 	$hActivePageWs = _CDP_Connect($pageWsUrl)
-	ConsoleWrite("Page WebSocket Handle: " & $hActivePageWs & @CRLF)
+	ConsoleWrite('> Info : Page WebSocket Handle: ' & $hActivePageWs & @CRLF)
 
     ; 3. Enable core domains
 
@@ -617,6 +619,7 @@ Func _CDP_Page_Locate($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")
 			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
 			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
+			_AutoItObject_AddMethod($oLocator, "setValue", "_CDP_Locator_SetValue")
 
 			_AutoItObject_AddMethod($oExpect, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
 			_AutoItObject_AddMethod($oExpect, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
@@ -911,6 +914,23 @@ Func _CDP_Locator_IsHidden($oSelf)
     Return ValueObj($val)
 EndFunc
 
+Func _CDP_Locator_SetValue($oSelf, $value)
+
+	Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("functionDeclaration", "function(value) { this.value = value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); }")
+    $oParams.Add("arguments", '[{"value":"' & $value & '"}]')
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    ; Extract the "result.value"
+    ;Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    ;Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    ;Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    ;Return _JsonC_ObjectGetValue($valueObj)
+
+EndFunc
+
 #endregion
 
 #region --- Expect / Assertions ---
@@ -1126,6 +1146,62 @@ Func __CDP_ParamsToJson($o)
     $s &= "}"
     Return $s
 EndFunc
+
+
+Func __CDP_ResolveBrowserSpecifier($browser)
+
+    ; Split "chrome@119" into ["chrome", "119"]
+    Local $arr = StringSplit($browser, "@", $STR_NOCOUNT)
+    If @error Or UBound($arr) < 2 Then
+        Return SetError(1, 0, $browser)
+    EndIf
+
+    Local $browserType = $arr[0]
+    Local $browserVersion = $arr[1]
+
+    ; Build Selenium Manager command
+    Local $cmd = 'selenium-manager.exe --browser ' & $browserType & ' --browser-version ' & $browserVersion & ' --cache-path .'
+
+    ; Run Selenium Manager and capture output
+	ConsoleWrite('> Info : Locating ' & $browserType & ' version ' & $browserVersion & ' (this may take a moment if it needs to download)' & @CRLF)
+    ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $browserType & ' version ' & $browserVersion & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
+	Local $output = __CDP_RunCmdCapture($cmd)
+    If @error Then Return SetError(2, 0, "")
+
+    ; Extract the "Browser path:" line
+    Local $browserPath = __CDP_ExtractBrowserPath($output)
+    If @error Then Return SetError(3, 0, "")
+
+    Return $browserPath
+EndFunc
+
+
+; Helper: run a command and capture stdout
+Func __CDP_RunCmdCapture($cmd)
+    Local $pid = Run(@ComSpec & " /c " & $cmd, "", @SW_HIDE, $RUN_CREATE_NEW_CONSOLE + $STDERR_MERGED + $STDOUT_CHILD)
+    If $pid = 0 Then Return SetError(1, 0, "")
+	ProcessWaitClose($pid)
+	Return StdoutRead($pid)
+EndFunc
+
+
+; Helper: extract the browser path from Selenium Manager output
+Func __CDP_ExtractBrowserPath($text)
+    Local $lines = StringSplit($text, @LF, $STR_ENTIRESPLIT)
+    For $i = 1 To $lines[0]
+        If StringInStr($lines[$i], "Browser path:") Then
+            ; Extract everything after the colon
+            Local $path = StringStripWS(StringTrimLeft($lines[$i], StringInStr($lines[$i], ":") ), $STR_STRIPALL)
+            Return $path
+        EndIf
+    Next
+
+    Return SetError(1, 0, "")
+EndFunc
+
+
+
+
 
 Func ErrFunc($oError)
 	ConsoleWrite("!>COM Error !"&@CRLF&"!>"&@TAB&"Number: "&Hex($oError.Number,8)&@CRLF&"!>"&@TAB&"Windescription: "&StringRegExpReplace($oError.windescription,"\R$","")&@CRLF&"!>"&@TAB&"Source: "&$oError.source&@CRLF&"!>"&@TAB&"Description: "&$oError.description&@CRLF&"!>"&@TAB&"Helpfile: "&$oError.helpfile&@CRLF&"!>"&@TAB&"Helpcontext: "&$oError.helpcontext&@CRLF&"!>"&@TAB&"Lastdllerror: "&$oError.lastdllerror&@CRLF&"!>"&@TAB&"Scriptline: "&$oError.scriptline&@CRLF)
