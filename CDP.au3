@@ -38,9 +38,20 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 
 _JsonC_Startup("json-c.dll")
 _AutoItObject_Startup()
-Local $cdp = _AutoItObject_Create()
-_AutoItObject_AddMethod($cdp, "browserLaunch", "_CDP_Browser_Launch")
-_AutoItObject_AddMethod($cdp, "browserAttach", "_CDP_Browser_Attach")
+
+Global $cdpConfig = _AutoItObject_Create()
+_AutoItObject_AddProperty($cdpConfig, "timeout", $ELSCOPE_PUBLIC, 5000)
+_AutoItObject_AddProperty($cdpConfig, "infoPopups", $ELSCOPE_PUBLIC, False)
+_AutoItObject_AddProperty($cdpConfig, "errorPopups", $ELSCOPE_PUBLIC, False)
+
+Global $cdpBrowser = _AutoItObject_Create()
+_AutoItObject_AddMethod($cdpBrowser, "launch", "_CDP_Browser_Launch")
+_AutoItObject_AddMethod($cdpBrowser, "attach", "_CDP_Browser_Attach")
+
+Global $cdp = _AutoItObject_Create()
+_AutoItObject_AddProperty($cdp, "config", $ELSCOPE_PUBLIC, $cdpConfig)
+_AutoItObject_AddProperty($cdp, "browser", $ELSCOPE_PUBLIC, $cdpBrowser)
+
 AdlibRegister("_CDP_RecvLoop", 5)
 
 #endregion
@@ -215,7 +226,7 @@ EndFunc
 
 Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
 
-	SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
+	if $cdp.config.infoPopups = True Then SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
 
 	if $browser = Default Then $browser = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
 	if $port = Default Then $port = 9222
@@ -241,11 +252,11 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	DirRemove($profile & "\Default\Sessions", 1)
 
 	ConsoleWrite('> Info : Running ' & $browser & @CRLF)
-	ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
+	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
 	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
     Run($cmd)
 
-	SplashOff()
+	if $cdp.config.infoPopups = True Then SplashOff()
 
     Sleep(500) ; give Chrome time to start
 
@@ -1164,7 +1175,7 @@ Func __CDP_ResolveBrowserSpecifier($browser)
 
     ; Run Selenium Manager and capture output
 	ConsoleWrite('> Info : Locating ' & $browserType & ' version ' & $browserVersion & ' (this may take a moment if it needs to download)' & @CRLF)
-    ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $browserType & ' version ' & $browserVersion & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
+    if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $browserType & ' version ' & $browserVersion & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
 	Local $output = __CDP_RunCmdCapture($cmd)
     If @error Then Return SetError(2, 0, "")
 

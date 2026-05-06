@@ -16,10 +16,10 @@ Exit
 
 Func ElementAttributes()
 
-	Local $hTimer = TimerInit()
+	$hTimer = TimerInit()
 
-	Local $browser = LaunchStandardBrowser()
-	Local $page    = $browser.page()
+	$browser = LaunchStandardBrowser()
+	$page    = $browser.page()
 
 	$page.Goto("https://testpages.eviltester.com")
 
@@ -35,59 +35,59 @@ Func ElementAttributes()
 
 	$browser.close()
 
-	Local $fDiff = TimerDiff($hTimer)
+	$fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> ElementAttributes() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
 EndFunc
 
 Func BasicWebPageWithStandardBrowser()
 
-	Local $hTimer = TimerInit()
+	$hTimer = TimerInit()
 
-	Local $browser = LaunchStandardBrowser()
-	Local $page    = $browser.page()
+	$browser = LaunchStandardBrowser()
+	$page    = $browser.page()
 	BasicWebPage($browser, $page)
 
-	Local $fDiff = TimerDiff($hTimer)
+	$fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> BasicWebPageWithStandardBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
 EndFunc
 
 Func BasicWebPageWithStandardHeadlessBrowser()
 
-	Local $hTimer = TimerInit()
+	$hTimer = TimerInit()
 
-	Local $browser = LaunchStandardHeadlessBrowser()
-	Local $page    = $browser.page()
+	$browser = LaunchStandardHeadlessBrowser()
+	$page    = $browser.page()
 	BasicWebPage($browser, $page)
 
-	Local $fDiff = TimerDiff($hTimer)
+	$fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> BasicWebPageWithStandardHeadlessBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
 EndFunc
 
 Func BasicWebPageWithPlaywrightBrowser()
 
-	Local $hTimer = TimerInit()
+	$hTimer = TimerInit()
 
-	Local $browser = LaunchPlaywrightBrowser()
-	Local $page    = $browser.page()
+	$browser = LaunchPlaywrightBrowser()
+	$page    = $browser.page()
 	BasicWebPage($browser, $page)
 
-	Local $fDiff = TimerDiff($hTimer)
+	$fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> BasicWebPageWithPlaywrightBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
 EndFunc
 
 Func BasicWebPageWithPlaywrightHeadlessBrowser()
 
-	Local $hTimer = TimerInit()
+	$hTimer = TimerInit()
 
-	Local $browser = LaunchPlaywrightHeadlessBrowser()
-	Local $page    = $browser.headlessShell()
+	$browser = LaunchPlaywrightHeadlessBrowser()
+	$page    = $browser.headlessShell()
 	BasicWebPage($browser, $page)
 
-	Local $fDiff = TimerDiff($hTimer)
+	$fDiff = TimerDiff($hTimer)
 	ConsoleWrite(@CRLF & "> BasicWebPageWithPlaywrightHeadlessBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
 EndFunc
