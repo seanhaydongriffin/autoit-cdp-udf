@@ -6,6 +6,11 @@ FileInstall(".\selenium-manager.exe", ".\")
 ; ======================================================================================================================
 ;   AutoIt CDP UDF
 ;   Direct Chrome DevTools Protocol automation for AutoIt
+;
+;	NOTE - Add the following line to your SciTEUser.properties for UTF8 / Unicode console support:
+;
+;	output.code.page=65001
+;
 ; ======================================================================================================================
 
 #region --- Core Includes & Globals ---
@@ -70,6 +75,10 @@ If Not IsDeclared("CDP_DISABLE_ALIASES") Or Not $CDP_DISABLE_ALIASES Then
 EndIf
 
 AdlibRegister("_CDP_RecvLoop", 5)
+
+; UTF8 / Unicode support
+DllCall("kernel32.dll", "bool", "SetConsoleOutputCP", "uint", 65001)
+DllCall("kernel32.dll", "bool", "SetConsoleCP", "uint", 65001)
 
 #endregion
 
@@ -967,11 +976,11 @@ EndFunc
 #region --- Test Class ---
 
 Func _CDP_Test($self, $text)
-    ConsoleWrite("▶ Test: " & $text & @CRLF)
+    __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
 EndFunc
 
 Func _CDP_Test_Step($self, $text)
-    ConsoleWrite("  ▶ Step: " & $text & @CRLF)
+    __CDP_ConsoleWriteUTF8("  ▶ Step: " & $text & @CRLF)
 EndFunc
 
 
@@ -1003,16 +1012,6 @@ Page‑level assertions
 
 #ce
 
-#cs
-Func expect($subject)
-    Local $obj = _AutoItObject_Create()
-    _AutoItObject_AddProperty($obj, "subject", $ELSCOPE_PUBLIC, $subject)
-    _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
-    _AutoItObject_AddMethod($obj, "toBe", "Expect_toBe")
-    ; add more assertion methods here
-    Return $obj
-EndFunc
-#ce
 
 Func _CDP_Test_Expect($self, $subject)
     Local $obj = _AutoItObject_Create()
@@ -1028,12 +1027,12 @@ Func _CDP_Test_Expect($self, $subject)
 EndFunc
 
 
-Func _CDP_Test_Expect_Msg($pass, $lineNumber, $text, $lineNumber = "")
+Func _CDP_Test_Expect_Msg($pass, $text, $lineNumber = "")
 	$result = "✓"
 	if $pass = False Then $result = "✗"
 	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
 
-    ConsoleWrite("    " & $result & " Expect: " & $text & $lineNumber & @CRLF)
+    __CDP_ConsoleWriteUTF8("    " & $result & " Expect: " & $text & $lineNumber & @CRLF)
 EndFunc
 
 
@@ -1041,11 +1040,11 @@ Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "")
 
 	if _CDP_Locator_IsVisible($self.subject).value Then
 
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is visible" & @CRLF)
+		_CDP_Test_Expect_Msg(True, "object [" & $self.subject.objectId & "] is visible", @ScriptLineNumber)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is not visible" & @CRLF)
+	_CDP_Test_Expect_Msg(False, "object [" & $self.subject.objectId & "] is not visible", @ScriptLineNumber)
     Return False
 
 EndFunc
@@ -1080,11 +1079,11 @@ Func _CDP_Expect_Locator_ToHaveText($self, $expected, $scriptLineNumber = "?")
 	Local $actual = _CDP_Locator_TextContent($self.subject).value
 
 	If $actual = $expected Then
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
+		_CDP_Test_Expect_Msg(True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : expected [" & $expected & "] but got [" & $actual & "]" & @CRLF)
+	_CDP_Test_Expect_Msg(False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
     Return False
 EndFunc
 
@@ -1273,7 +1272,10 @@ Func __CDP_ExtractBrowserPath($text)
     Return SetError(1, 0, "")
 EndFunc
 
-
+Func __CDP_ConsoleWriteUTF8($sText)
+	; ChrW(0x200B) enforces unicode fallback fonts in windows console
+    ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
+EndFunc
 
 
 
