@@ -22,6 +22,7 @@ Global $hActiveBrowserWs = Null
 Global $hActivePageWs = Null
 Global $hActiveSessionId = Null
 Global $g_iCDP_NextId = 1
+Global $CDP_DISABLE_ALIASES
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 
@@ -44,13 +45,29 @@ _AutoItObject_AddProperty($cdpConfig, "timeout", $ELSCOPE_PUBLIC, 5000)
 _AutoItObject_AddProperty($cdpConfig, "infoPopups", $ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", $ELSCOPE_PUBLIC, False)
 
+Global $cdpTest = _AutoItObject_Create()
+_AutoItObject_AddMethod($cdpTest, "__default__", "_CDP_Test")
+_AutoItObject_AddMethod($cdpTest, "step", "_CDP_Test_Step")
+_AutoItObject_AddMethod($cdpTest, "expect", "_CDP_Test_Expect")
+
 Global $cdpBrowser = _AutoItObject_Create()
 _AutoItObject_AddMethod($cdpBrowser, "launch", "_CDP_Browser_Launch")
 _AutoItObject_AddMethod($cdpBrowser, "attach", "_CDP_Browser_Attach")
 
 Global $cdp = _AutoItObject_Create()
 _AutoItObject_AddProperty($cdp, "config", $ELSCOPE_PUBLIC, $cdpConfig)
+_AutoItObject_AddProperty($cdp, "test", $ELSCOPE_PUBLIC, $cdpTest)
 _AutoItObject_AddProperty($cdp, "browser", $ELSCOPE_PUBLIC, $cdpBrowser)
+
+;Global $test = _AutoItObject_Create()
+;_AutoItObject_AddProperty($cdp, "config", $ELSCOPE_PUBLIC, $cdpConfig)
+;_AutoItObject_AddProperty($cdp, "browser", $ELSCOPE_PUBLIC, $cdpBrowser)
+
+If Not IsDeclared("CDP_DISABLE_ALIASES") Or Not $CDP_DISABLE_ALIASES Then
+    Global $browser = $cdp.browser
+    Global $test    = $cdp.test
+    Global $config  = $cdp.config
+EndIf
 
 AdlibRegister("_CDP_RecvLoop", 5)
 
@@ -222,6 +239,8 @@ EndFunc
 
 #endregion
 
+
+
 #region --- Browser Class ---
 
 Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
@@ -365,8 +384,8 @@ Func _CDP_Browser_NewPage($oSelf)
 
     _AutoItObject_AddMethod($oPage, "goto",      "_CDP_Page_Goto")
     _AutoItObject_AddMethod($oPage, "evaluate",  "_CDP_Page_Evaluate")
-    _AutoItObject_AddMethod($oPage, "locate",    "_CDP_Page_Locate")
-    _AutoItObject_AddMethod($oPage, "locateNow", "_CDP_Page_LocateNow")
+    _AutoItObject_AddMethod($oPage, "locator",    "_CDP_Page_Locator")
+    _AutoItObject_AddMethod($oPage, "locatorNow", "_CDP_Page_LocatorNow")
 
     ; Add properties
 
@@ -430,8 +449,8 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
 
     _AutoItObject_AddMethod($oPage, "goto",      "_CDP_Page_Goto")
     _AutoItObject_AddMethod($oPage, "evaluate",  "_CDP_Page_Evaluate")
-    _AutoItObject_AddMethod($oPage, "locate",    "_CDP_Page_Locate")
-    _AutoItObject_AddMethod($oPage, "locateNow", "_CDP_Page_LocateNow")
+    _AutoItObject_AddMethod($oPage, "locator",    "_CDP_Page_Locator")
+    _AutoItObject_AddMethod($oPage, "locatorNow", "_CDP_Page_LocatorNow")
 
     ; Add properties
 
@@ -561,7 +580,7 @@ Func __CDP_Object_To_Node($objectId)
 EndFunc
 
 
-Func _CDP_Page_Locate($oSelf, $selector)
+Func _CDP_Page_Locator($oSelf, $selector)
 
     Local $type = ""
 	Local $nodeIdVal = Null
@@ -647,7 +666,7 @@ Func _CDP_Page_Locate($oSelf, $selector)
 
 			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
 			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, Null)
-			_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
+			;_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
 			_AutoItObject_AddProperty($oExpect, "parent", $ELSCOPE_PUBLIC, $oLocator)
@@ -664,7 +683,7 @@ Func _CDP_Page_Locate($oSelf, $selector)
 
 EndFunc
 
-Func _CDP_Page_LocateNow($oSelf, $selector)
+Func _CDP_Page_LocatorNow($oSelf, $selector)
 
     Local $type = ""
 
@@ -724,7 +743,7 @@ Func _CDP_Page_LocateNow($oSelf, $selector)
 	; Add properties
 
 	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
-	_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
+	;_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 	;_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
 
@@ -760,7 +779,7 @@ Func ValueObj($value)
     _AutoItObject_AddMethod($expect, "toBeFalsy", "_CDP_Expect_Value_ToBeFalsy")
 
 	_AutoItObject_AddProperty($expect, "parent", $ELSCOPE_PUBLIC, $o)
-	_AutoItObject_AddProperty($o, "expect", $ELSCOPE_PUBLIC, $expect)
+	;_AutoItObject_AddProperty($o, "expect", $ELSCOPE_PUBLIC, $expect)
 
     Return $o
 EndFunc
@@ -944,7 +963,17 @@ EndFunc
 
 #endregion
 
-#region --- Expect / Assertions ---
+
+#region --- Test Class ---
+
+Func _CDP_Test($self, $text)
+    ConsoleWrite("▶ Test: " & $text & @CRLF)
+EndFunc
+
+Func _CDP_Test_Step($self, $text)
+    ConsoleWrite("  ▶ Step: " & $text & @CRLF)
+EndFunc
+
 
 ; Expect()
 ; Expect_ToHaveText()
@@ -974,29 +1003,62 @@ Page‑level assertions
 
 #ce
 
+#cs
+Func expect($subject)
+    Local $obj = _AutoItObject_Create()
+    _AutoItObject_AddProperty($obj, "subject", $ELSCOPE_PUBLIC, $subject)
+    _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
+    _AutoItObject_AddMethod($obj, "toBe", "Expect_toBe")
+    ; add more assertion methods here
+    Return $obj
+EndFunc
+#ce
 
-Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "?")
+Func _CDP_Test_Expect($self, $subject)
+    Local $obj = _AutoItObject_Create()
+    _AutoItObject_AddProperty($obj, "subject", $ELSCOPE_PUBLIC, $subject)
+    _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
+    _AutoItObject_AddMethod($obj, "toBe", "_CDP_Expect_Value_ToBe")
+    _AutoItObject_AddMethod($obj, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
+    _AutoItObject_AddMethod($obj, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
+    _AutoItObject_AddMethod($obj, "toContainText", "_CDP_Expect_Locator_ToContainText")
+    _AutoItObject_AddMethod($obj, "toContain", "_CDP_Expect_Value_ToContain")
+    ; add more assertion methods here
+    Return $obj
+EndFunc
 
-	if _CDP_Locator_IsVisible($self.parent).value Then
 
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is visible" & @CRLF)
+Func _CDP_Test_Expect_Msg($pass, $lineNumber, $text, $lineNumber = "")
+	$result = "✓"
+	if $pass = False Then $result = "✗"
+	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
+
+    ConsoleWrite("    " & $result & " Expect: " & $text & $lineNumber & @CRLF)
+EndFunc
+
+
+Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "")
+
+	if _CDP_Locator_IsVisible($self.subject).value Then
+
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is visible" & @CRLF)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is not visible" & @CRLF)
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is not visible" & @CRLF)
     Return False
 
 EndFunc
 
 Func _CDP_Expect_Locator_ToBeHidden($self, $scriptLineNumber = "?")
 
-	if _CDP_Locator_IsHidden($self.parent).value Then
+	if _CDP_Locator_IsHidden($self.subject).value Then
 
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is hidden" & @CRLF)
+        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is hidden" & @CRLF)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.parent.objectId & "] is not hidden" & @CRLF)
+    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is not hidden" & @CRLF)
     Return False
 
 EndFunc
@@ -1015,7 +1077,7 @@ EndFunc
 
 Func _CDP_Expect_Locator_ToHaveText($self, $expected, $scriptLineNumber = "?")
 
-	Local $actual = _CDP_Locator_TextContent($self.parent).value
+	Local $actual = _CDP_Locator_TextContent($self.subject).value
 
 	If $actual = $expected Then
         ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
@@ -1028,7 +1090,7 @@ EndFunc
 
 Func _CDP_Expect_Locator_ToContainText($self, $expected, $scriptLineNumber = "?")
 
-	Local $actual = _CDP_Locator_TextContent($self.parent).value
+	Local $actual = _CDP_Locator_TextContent($self.subject).value
 
 	If StringInStr($actual, $expected) > 0 Then
 		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
@@ -1052,7 +1114,7 @@ Func _CDP_Expect_Locator_ToHaveCount($self, $expected, $scriptLineNumber = "?")
 EndFunc
 
 Func _CDP_Expect_Value_ToBe($self, $expected, $scriptLineNumber = "?")
-    Local $actual = $self.parent.value
+    Local $actual = $self.subject.value
     If $actual = $expected Then
         ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
 		Return True
@@ -1068,9 +1130,7 @@ Func _CDP_Expect_Value_ToEqual($self, $expected, $scriptLineNumber = "?")
 EndFunc
 
 Func _CDP_Expect_Value_ToContain($self, $expected, $scriptLineNumber = "?")
-
-    Local $actual = $self.parent.value
-
+    Local $actual = $self.subject.value
 	If StringInStr($actual, $expected) > 0 Then
 		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
         Return True
@@ -1090,7 +1150,10 @@ Func _CDP_Expect_Value_ToBeFalsy($self, $expected, $scriptLineNumber = "?")
 EndFunc
 
 
+
 #endregion
+
+
 
 #region --- Utilities ---
 
