@@ -19,6 +19,7 @@ FileInstall(".\selenium-manager.exe", ".\")
 #include <AutoItConstants.au3>
 #include <StringConstants.au3>
 #include <Array.au3>
+#include <String.au3>
 #include "CurlEx.au3"
 #include "JsonC.au3"
 #include "AutoItObject.au3"
@@ -30,6 +31,8 @@ Global $g_iCDP_NextId = 1
 Global $CDP_DISABLE_ALIASES
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
+
+Global $g_CDP_IndentLevel = 0
 
 Global $g_CDP_Pending = ObjCreate("Scripting.Dictionary")
 Global $g_CDP_Events  = ObjCreate("Scripting.Dictionary")
@@ -50,27 +53,16 @@ _AutoItObject_AddProperty($cdpConfig, "timeout", $ELSCOPE_PUBLIC, 5000)
 _AutoItObject_AddProperty($cdpConfig, "infoPopups", $ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", $ELSCOPE_PUBLIC, False)
 
-Global $cdpTest = _AutoItObject_Create()
-_AutoItObject_AddMethod($cdpTest, "__default__", "_CDP_Test")
-_AutoItObject_AddMethod($cdpTest, "step", "_CDP_Test_Step")
-_AutoItObject_AddMethod($cdpTest, "expect", "_CDP_Test_Expect")
-
 Global $cdpBrowser = _AutoItObject_Create()
 _AutoItObject_AddMethod($cdpBrowser, "launch", "_CDP_Browser_Launch")
 _AutoItObject_AddMethod($cdpBrowser, "attach", "_CDP_Browser_Attach")
 
 Global $cdp = _AutoItObject_Create()
 _AutoItObject_AddProperty($cdp, "config", $ELSCOPE_PUBLIC, $cdpConfig)
-_AutoItObject_AddProperty($cdp, "test", $ELSCOPE_PUBLIC, $cdpTest)
 _AutoItObject_AddProperty($cdp, "browser", $ELSCOPE_PUBLIC, $cdpBrowser)
-
-;Global $test = _AutoItObject_Create()
-;_AutoItObject_AddProperty($cdp, "config", $ELSCOPE_PUBLIC, $cdpConfig)
-;_AutoItObject_AddProperty($cdp, "browser", $ELSCOPE_PUBLIC, $cdpBrowser)
 
 If Not IsDeclared("CDP_DISABLE_ALIASES") Or Not $CDP_DISABLE_ALIASES Then
     Global $browser = $cdp.browser
-    Global $test    = $cdp.test
     Global $config  = $cdp.config
 EndIf
 
@@ -643,7 +635,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			; Create the Locator object
 
 			Local $oLocator = _AutoItObject_Create()
-			Local $oExpect = _AutoItObject_Create()
+			;Local $oExpect = _AutoItObject_Create()
 
 			; Add methods
 
@@ -660,16 +652,16 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
 			_AutoItObject_AddMethod($oLocator, "setValue", "_CDP_Locator_SetValue")
 
-			_AutoItObject_AddMethod($oExpect, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
-			_AutoItObject_AddMethod($oExpect, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
-			_AutoItObject_AddMethod($oExpect, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")
-			_AutoItObject_AddMethod($oExpect, "toBeDisabled", "_CDP_Expect_Locator_ToBeDisabled")
-			_AutoItObject_AddMethod($oExpect, "toBeChecked", "_CDP_Expect_Locator_ToBeChecked")
-			_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
-			_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_Locator_ToContainText")
-			_AutoItObject_AddMethod($oExpect, "toHaveAttribute", "_CDP_Expect_Locator_ToHaveAttribute")
-			_AutoItObject_AddMethod($oExpect, "toHaveValue", "_CDP_Expect_Locator_ToHaveValue")
-			_AutoItObject_AddMethod($oExpect, "toHaveCount", "_CDP_Expect_Locator_ToHaveCount")
+			;_AutoItObject_AddMethod($oExpect, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
+			;_AutoItObject_AddMethod($oExpect, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
+			;_AutoItObject_AddMethod($oExpect, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")
+			;_AutoItObject_AddMethod($oExpect, "toBeDisabled", "_CDP_Expect_Locator_ToBeDisabled")
+			;_AutoItObject_AddMethod($oExpect, "toBeChecked", "_CDP_Expect_Locator_ToBeChecked")
+			;_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
+			;_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_Locator_ToContainText")
+			;_AutoItObject_AddMethod($oExpect, "toHaveAttribute", "_CDP_Expect_Locator_ToHaveAttribute")
+			;_AutoItObject_AddMethod($oExpect, "toHaveValue", "_CDP_Expect_Locator_ToHaveValue")
+			;_AutoItObject_AddMethod($oExpect, "toHaveCount", "_CDP_Expect_Locator_ToHaveCount")
 
 			; Add properties
 
@@ -678,7 +670,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			;_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
-			_AutoItObject_AddProperty($oExpect, "parent", $ELSCOPE_PUBLIC, $oLocator)
+			;_AutoItObject_AddProperty($oExpect, "parent", $ELSCOPE_PUBLIC, $oLocator)
 
 			Return $oLocator
 		EndIf
@@ -977,11 +969,43 @@ EndFunc
 
 Func _CDP_Test($self, $text)
     __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
+	$g_CDP_IndentLevel = $g_CDP_IndentLevel + 1
+	Return $self
 EndFunc
 
-Func _CDP_Test_Step($self, $text)
-    __CDP_ConsoleWriteUTF8("  ▶ Step: " & $text & @CRLF)
+Func test($text)
+
+    __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
+	$g_CDP_IndentLevel = $g_CDP_IndentLevel + 1
+
+	Local $test = _AutoItObject_Create()
+	;_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddDestructor($test, "_CDP_Test_End")
+	Return $test
+
 EndFunc
+
+Func teststep($text)
+
+	__CDP_ConsoleWriteUTF8(_StringRepeat("  ", $g_CDP_IndentLevel) & "▶ Step: " & $text & @CRLF)
+	$g_CDP_IndentLevel = $g_CDP_IndentLevel + 1
+
+	Local $teststep = _AutoItObject_Create()
+	;_AutoItObject_AddProperty($teststep, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddMethod($teststep, "expect", "_CDP_Test_Step_Expect")
+	_AutoItObject_AddDestructor($teststep, "_CDP_Test_Step_End")
+	Return $teststep
+
+EndFunc
+
+Func _CDP_Test_Step_End($self)
+	$g_CDP_IndentLevel = $g_CDP_IndentLevel - 1
+EndFunc
+
+Func _CDP_Test_End($self)
+	$g_CDP_IndentLevel = $g_CDP_IndentLevel - 1
+EndFunc
+
 
 
 ; Expect()
@@ -1013,8 +1037,9 @@ Page‑level assertions
 #ce
 
 
-Func _CDP_Test_Expect($self, $subject)
+Func _CDP_Test_Step_Expect($self, $subject)
     Local $obj = _AutoItObject_Create()
+    _AutoItObject_AddProperty($obj, "parent", $ELSCOPE_PUBLIC, $self)
     _AutoItObject_AddProperty($obj, "subject", $ELSCOPE_PUBLIC, $subject)
     _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
     _AutoItObject_AddMethod($obj, "toBe", "_CDP_Expect_Value_ToBe")
@@ -1027,12 +1052,12 @@ Func _CDP_Test_Expect($self, $subject)
 EndFunc
 
 
-Func _CDP_Test_Expect_Msg($pass, $text, $lineNumber = "")
+Func _CDP_Test_Step_Expect_Msg($indent, $pass, $text, $lineNumber = "")
 	$result = "✓"
 	if $pass = False Then $result = "✗"
 	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
 
-    __CDP_ConsoleWriteUTF8("    " & $result & " Expect: " & $text & $lineNumber & @CRLF)
+    __CDP_ConsoleWriteUTF8($indent & $result & " Expect: " & $text & $lineNumber & @CRLF)
 EndFunc
 
 
@@ -1040,11 +1065,11 @@ Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "")
 
 	if _CDP_Locator_IsVisible($self.subject).value Then
 
-		_CDP_Test_Expect_Msg(True, "object [" & $self.subject.objectId & "] is visible", @ScriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is visible", @ScriptLineNumber)
 		Return True
     EndIf
 
-	_CDP_Test_Expect_Msg(False, "object [" & $self.subject.objectId & "] is not visible", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not visible", @ScriptLineNumber)
     Return False
 
 EndFunc
@@ -1053,11 +1078,11 @@ Func _CDP_Expect_Locator_ToBeHidden($self, $scriptLineNumber = "?")
 
 	if _CDP_Locator_IsHidden($self.subject).value Then
 
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is hidden" & @CRLF)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is hidden", @ScriptLineNumber)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : object [" & $self.subject.objectId & "] is not hidden" & @CRLF)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not hidden", @ScriptLineNumber)
     Return False
 
 EndFunc
@@ -1079,11 +1104,11 @@ Func _CDP_Expect_Locator_ToHaveText($self, $expected, $scriptLineNumber = "?")
 	Local $actual = _CDP_Locator_TextContent($self.subject).value
 
 	If $actual = $expected Then
-		_CDP_Test_Expect_Msg(True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
 		Return True
     EndIf
 
-	_CDP_Test_Expect_Msg(False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
     Return False
 EndFunc
 
@@ -1092,11 +1117,11 @@ Func _CDP_Expect_Locator_ToContainText($self, $expected, $scriptLineNumber = "?"
 	Local $actual = _CDP_Locator_TextContent($self.subject).value
 
 	If StringInStr($actual, $expected) > 0 Then
-		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", @ScriptLineNumber)
         Return True
     EndIf
 
-	ConsoleWrite('! Fail (line ' & $scriptLineNumber & ') : expected actual text to contain [' & $expected & '] but got [' & $actual & ']' & @CRLF)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
     Return False
 EndFunc
 
@@ -1115,11 +1140,11 @@ EndFunc
 Func _CDP_Expect_Value_ToBe($self, $expected, $scriptLineNumber = "?")
     Local $actual = $self.subject.value
     If $actual = $expected Then
-        ConsoleWrite("+ Pass (line " & $scriptLineNumber & ") : expected [" & $expected & "] and got [" & $actual & "]" & @CRLF)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
 		Return True
     EndIf
 
-    ConsoleWrite("! FAIL (line " & $scriptLineNumber & ") : expected [" & $expected & "] but got [" & $actual & "]" & @CRLF)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
     Return False
 
 EndFunc
@@ -1131,11 +1156,11 @@ EndFunc
 Func _CDP_Expect_Value_ToContain($self, $expected, $scriptLineNumber = "?")
     Local $actual = $self.subject.value
 	If StringInStr($actual, $expected) > 0 Then
-		ConsoleWrite('+ Pass (line ' & $scriptLineNumber & ') : actual text contains [' & $expected & ']' & @CRLF)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", @ScriptLineNumber)
         Return True
     EndIf
 
-	ConsoleWrite('! Fail (line ' & $scriptLineNumber & ') : expected actual text to contain [' & $expected & '] but got [' & $actual & ']' & @CRLF)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
     Return False
 
 EndFunc
