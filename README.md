@@ -195,3 +195,17 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 Example launch:
 
+## License
+
+Distributed under the MIT License. See [LICENSE] for more information.
+
+## Acknowledgements
+
+- Opportunity by [GitHub](https://github.com)
+- Badges by [Shields](https://shields.io)
+- Thanks to the authors of the Third-Party UDFs
+  - *Json UDF* by @Ward and @Jos
+  - *WinHTTP UDF* by @trancexx/[@dragana-r](https://github.com/dragana-r)
+  - *WinHttp_WebSocket UDF* by @Danp2
+
+
