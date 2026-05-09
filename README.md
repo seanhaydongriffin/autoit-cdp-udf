@@ -1,7 +1,9 @@
 <p align="center">
-    <img src="images/icon.png" width="176" />
-    <h2 align="center"The AutoIT CDP UDF</h2>
+  <img src="images/icon.png" width="176" alt="CDP UDF logo">
 </p>
+
+<h3 align="center">AutoIt CDP UDF</h3>
+
 
 [![license](https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx)]
 [![contributors](https://img.shields.io/github/contributors/Danp2/au3WebDriver.svg?style=flat-square&logo=github)][Contributors]
