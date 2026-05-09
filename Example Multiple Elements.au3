@@ -5,9 +5,6 @@
 
 #include "CDP.au3"
 
-$hTimer = TimerInit()
-
-;$cdp.config.debug = True
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.page()
 
@@ -18,6 +15,8 @@ With test("Multiple Elements test")
 
 	With teststep("Verify the submit button is disabled")
 		.expect($page.locator("//button[@id='submitBtn']").isDisabled()).toBe(True, @ScriptLineNumber)
+		.expect($page.locator("//button[@id='submitBtn']").isEnabled()).toBe(False, @ScriptLineNumber)
+		.expect($page.locator("//button[@id='submitBtn']")).toBeDisabled(@ScriptLineNumber)
 	EndWith
 
 	With teststep("Verify the manager radio button state change")
@@ -25,11 +24,15 @@ With test("Multiple Elements test")
 		.expect($manager.isChecked()).toBe(False, @ScriptLineNumber)
 		$manager.click()
 		.expect($manager.isChecked()).toBe(True, @ScriptLineNumber)
+		.expect($manager).toBeChecked(@ScriptLineNumber)
 	EndWith
 
 	With teststep("Verify the submit button is now enabled")
+		.expect($page.locator("//button[@id='submitBtn']").isDisabled()).toBe(False, @ScriptLineNumber)
 		.expect($page.locator("//button[@id='submitBtn']").isEnabled()).toBe(True, @ScriptLineNumber)
+		.expect($page.locator("//button[@id='submitBtn']")).toBeEnabled(@ScriptLineNumber)
 	EndWith
 
 EndWith
 
+$chrome.close()

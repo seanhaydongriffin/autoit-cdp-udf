@@ -5,9 +5,6 @@
 
 #include "CDP.au3"
 
-$hTimer = TimerInit()
-
-;$cdp.config.debug = True
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.page()
 
@@ -62,6 +59,70 @@ With test("Basic Inputs test")
 
 	EndWith
 
+	With teststep("Verify the radio buttons")
+
+		With teststep("Radio button 1")
+
+			With teststep("Initial state")
+				.expect($page.locator("//span[@id='radio-input-1-type-value']")).toHaveText("radio", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-value-value']")).toHaveText("One", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-id-value']")).toHaveText("radio-input-1", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("initiated", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-key-value']")).toHaveText("", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-checked-value']")).toHaveText("false", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-1']").click()
+
+			With teststep("State after click")
+				.expect($page.locator("//span[@id='radio-input-1-type-value']")).toHaveText("radio", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-value-value']")).toHaveText("One", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-id-value']")).toHaveText("radio-input-1", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("change", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-key-value']")).toHaveText("", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-checked-value']")).toHaveText("true", @ScriptLineNumber)
+			EndWith
+
+		EndWith
+
+		With teststep("Radio button 2")
+
+			With teststep("Initial state")
+				.expect($page.locator("//span[@id='radio-input-2-type-value']")).toHaveText("radio", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-value-value']")).toHaveText("Two", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-id-value']")).toHaveText("radio-input-2", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("initiated", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-key-value']")).toHaveText("", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-checked-value']")).toHaveText("false", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-2']").click()
+
+			With teststep("State after click")
+				.expect($page.locator("//span[@id='radio-input-2-type-value']")).toHaveText("radio", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-value-value']")).toHaveText("Two", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-id-value']")).toHaveText("radio-input-2", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("change", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-key-value']")).toHaveText("", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-checked-value']")).toHaveText("true", @ScriptLineNumber)
+			EndWith
+
+		EndWith
+
+	EndWith
+
+	With teststep("Verify the hidden")
+
+		With teststep("Initial state")
+			.expect($page.locator("//span[@id='hidden-input-type-value']")).toHaveText("hidden", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='hidden-input-value-value']")).toHaveText("bob", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='hidden-input-id-value']")).toHaveText("hidden-input", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='hidden-input-event-value']")).toHaveText("initiated", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='hidden-input-key-value']")).toHaveText("", @ScriptLineNumber)
+		EndWith
+
+	EndWith
 
 EndWith
 
+$chrome.close()
