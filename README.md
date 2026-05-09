@@ -247,7 +247,7 @@ Try the following examples from the main folder that demonstrate the UDF functio
 | Example Number Inputs.au3 |  |
 | Example Default Chrome.au3 |  |
 
-### Test output 
+### Example output 
 
 The Basic Web Page test should output the following:
 
