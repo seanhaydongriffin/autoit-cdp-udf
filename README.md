@@ -234,16 +234,15 @@ Try the following examples from the main folder that demonstrate the UDF functio
 
 | Script | Features Included |
 | --- | --- |
-| Example Default Chrome.au3 | Basic Web Page test in default "pre-installed" Chrome browser |
-| Example Default Headless Chrome.au3 | Basic Web Page test in default "pre-installed" Chrome browser & headless mode |
-| Example Playwright Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium browser |
-| Example Playwright Headless Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium Headless Shell |
-| Example Element Attributes.au3 | Web Element Attributes test |
-| Example Element Attributes Debug.au3 | Web Element Attributes test with debugging enabled |
-| Example Multiple Elements.au3 |  |
-| Example Basic Inputs.au3 |  |
-| Example Number Inputs.au3 |  |
-| Example Default Chrome.au3 |  |
+| Example Default Chrome.au3 | Test of a basic web page using default "pre-installed" Chrome browser |
+| Example Default Headless Chrome.au3 | Test of a basic web page using default "pre-installed" Chrome browser & headless mode |
+| Example Playwright Chrome.au3 | Test of a basic web page using optionally installed Playwright Chromium browser |
+| Example Playwright Headless Chrome.au3 | Basic Web Page test using optionally installed Playwright Chromium Headless Shell |
+| Example Element Attributes.au3 | Test of web element attributes |
+| Example Element Attributes Debug.au3 | Test of web element attributes with debugging enabled |
+| Example Multiple Elements.au3 | Test of multiple web elements |
+| Example Basic Inputs.au3 | Test of basic HTML input elements |
+| Example Number Inputs.au3 | Test of numeric HTML input elements |
 
 ### Example output 
 
