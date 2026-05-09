@@ -247,6 +247,57 @@ Try the following examples from the main folder that demonstrate the UDF functio
 | Example Number Inputs.au3 |  |
 | Example Default Chrome.au3 |  |
 
+### Test output 
+
+The Basic Web Page test should output the following:
+
+​▶ Test: Basic web page test
+​  ▶ Step: Verify Basic Web Page navigation
+​    ▶ Step: Navigate to evil tester test pages
+​    ▶ Step: Verify the main page
+​        ✓ Expect: expected [Software Testing Practice Pages, Apps, and Challenges] and got [Software Testing Practice Pages, Apps, and Challenges] (line 29)
+​        ✓ Expect: expected [Software Testing Practice Pages, Apps, and Challenges] and got [Software Testing Practice Pages, Apps, and Challenges] (line 31)
+​        ✓ Expect: object [-5136690175131552945.1.1] is hidden (line 32)
+​        ✓ Expect: expected [False] and got [False] (line 33)
+​        ✓ Expect: expected [True] and got [True] (line 34)
+​    ▶ Step: Verify navigation to Pages
+​        ✓ Expect: expected [Pages] and got [Pages] (line 39)
+​        ✓ Expect: object [-5136690175131552945.1.2] is visible (line 40)
+​        ✓ Expect: expected truthy and got [True] (line 41)
+​        ✓ Expect: expected falsy and got [False] (line 42)
+​    ▶ Step: Navigate to Pages
+​    ▶ Step: Verify navigation to Basics
+​        ✓ Expect: expected [Basics] and got [Basics] (line 50)
+​    ▶ Step: Navigate to Basic Web Page
+​  ▶ Step: Verify Basic Web Page
+​    ▶ Step: Page elements
+​        ✓ Expect: actual text contains [Elements] (line 63)
+​        ✓ Expect: expected [Tags:
+
+ Elements Locators
+
+Categories:
+
+ Basics] to contain [Elements] (line 64)
+​        ✓ Expect: expected [Tags:
+
+ Elements Locators
+
+Categories:
+
+ Basics] to match regex [.*Categor.*] (line 65)
+​        ✓ Expect: expected [A paragraph of text] and got [A paragraph of text] (line 66)
+​        ✓ Expect: expected [Another paragraph of text] and got [Another paragraph of text] (line 67)
+​    ▶ Step: Click Me functionality
+​        ✓ Expect: expected [You clicked the button!] and got [You clicked the button!] (line 72)
+​        ✓ Expect: expected defined value and got [defined] (line 73)
+​        ✓ Expect: expected length [23] and got [23] (line 74)
+​  ▶ Step: Verify invalid locator
+​      ✓ Expect: expected Null and got [Null] (line 80)
+
+> BasicWebPageWithStandardBrowser() took n ms.
+
+
 
 ## Configuration
 
