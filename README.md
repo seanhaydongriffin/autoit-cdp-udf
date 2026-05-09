@@ -98,7 +98,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``click()`` | ❌¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
+| ``click()`` | ✔️¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
 | ``dblclick()`` | ❌ | ✔️ | same as click (twice) |
 | ``hover()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``tap()`` | ❌ | ✔️ | Input.dispatchTouchEvent |
