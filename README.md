@@ -300,7 +300,7 @@ Categories:
 
 ## Configuration
 
-The AutoIT SciTE script editor does not have UTF8 / Unicode support enabled by default.  This is required to display the unicode characters in the test output (see the "Example output" above).
+The AutoIT SciTE script editor does not have UTF8 / Unicode support enabled by default.  This is required to display the unicode characters (like ▶✓) in the test output (see the "Example output" above).
 
 To enable this in the AutoIT editor add the following line to your SciTEUser.properties file (via menu Options > Open User Options File) :
 
