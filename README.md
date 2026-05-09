@@ -5,13 +5,15 @@
 <h3 align="center">AutoIt CDP UDF</h3>
 
 
-[![license](https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx)]
-[![contributors](https://img.shields.io/github/contributors/Danp2/au3WebDriver.svg?style=flat-square&logo=github)][Contributors]
-![repo size](https://img.shields.io/github/repo-size/Danp2/au3WebDriver.svg?style=flat-square&logo=github)
-[![last commit](https://img.shields.io/github/last-commit/Danp2/au3WebDriver.svg?style=flat-square&logo=github)](https://github.com/Danp2/au3WebDriver/commits/master)
-[![release](https://img.shields.io/github/release/Danp2/au3WebDriver.svg?style=flat-square&logo=github)](https://github.com/Danp2/au3WebDriver/releases/latest)
-![os](https://img.shields.io/badge/os-windows-yellow.svg?style=flat-square&logo=windows)
-![stars](https://img.shields.io/github/stars/Danp2/au3WebDriver?color=blueviolet&logo=reverbnation&logoColor=white&style=flat-square)
+<p align="center">
+  <img src="https://img.shields.io/github/license/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=spdx">
+  <img src="https://img.shields.io/github/contributors/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=github">
+  <img src="https://img.shields.io/github/repo-size/seanhaydonggriffin/autoit-cdp-udf?style=flat-square&logo=github">
+  <img src="https://img.shields.io/github/last-commit/seanhaydonggriffin/autoit-cdp-udf?style=flat-square&logo=github">
+  <img src="https://img.shields.io/github/v/release/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=github">
+  <img src="https://img.shields.io/badge/os-windows-yellow?style=flat-square&logo=windows">
+  <img src="https://img.shields.io/github/stars/seanhaydongriffin/autoit-cdp-udf?color=blueviolet&logo=reverbnation&logoColor=white&style=flat-square">
+</p>
 
 [Description](#description) | [Documentation](#documentation) | [Features](#features) | [Getting started](#getting-started) | [Configuration](#configuration) | [Contributing](#contributing) | [License](#license) | [Acknowledgements](#acknowledgements)
 
