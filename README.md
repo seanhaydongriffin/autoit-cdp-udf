@@ -234,8 +234,9 @@ Try the following examples from the main folder that demonstrate the UDF functio
 
 | Script | Features Included |
 | --- | --- |
-| Example Default Chrome.au3 | Test of a basic web page using default "pre-installed" Chrome browser |
-| Example Default Headless Chrome.au3 | Test of a basic web page using default "pre-installed" Chrome browser & headless mode |
+| Example Chrome Default.au3 | Test of a basic web page using default "pre-installed" Chrome browser |
+| Example Chrome Default Headless.au3 | Test of a basic web page using default "pre-installed" Chrome browser & headless mode |
+| Example Chrome v119.au3 | Test of a basic web page using an "auto-installed" Chrome browser v119 |
 | Example Playwright Chrome.au3 | Test of a basic web page using optionally installed Playwright Chromium browser |
 | Example Playwright Headless Chrome.au3 | Basic Web Page test using optionally installed Playwright Chromium Headless Shell |
 | Example Element Attributes.au3 | Test of web element attributes |
