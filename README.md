@@ -14,6 +14,7 @@
   <a href="#description">Description</a> •
   <a href="#documentation">Documentation</a> •
   <a href="#features">Features</a> •
+  <a href="#comparison">Features</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#contributing">Contributing</a> •
@@ -64,8 +65,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 Comparing CDP UDF to Playwright
 
     ✔️ = supported
-    ❌ = not supported
-    (CDP UDF refers to your AutoIt CDP UDF)
+    ❌ = not supported    
 
 ### Test Runner & Assertions
 
@@ -81,6 +81,114 @@ Comparing CDP UDF to Playwright
 | **Parallel test execution** | ❌ | ✔️ |
 | **Automatic trace viewer** | ❌ | ✔️ |
 | **Automatic HTML report** | ❌ | ✔️ |    
+
+### Locator‑Creation Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``locator(selector)`` | ✔️ | ✔️ |
+| ``getByText()`` | ✔️ | ✔️ |
+| ``getByRole()`` | ❌ | ✔️ |
+| ``getByTestId()`` | ✔️ | ✔️ |
+| ``getByLabel()`` | ❌ | ✔️ |
+| ``getByPlaceholder()`` | ❌ | ✔️ |
+| ``frameLocator()`` | ✔️ | ✔️ |
+| ``nth()`` | ✔️ | ✔️ |
+| ``first()`` | ✔️ | ✔️ |
+| ``last()`` | ✔️ | ✔️ |
+
+### Locator Action Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``click()`` | ✔️ | ✔️ |
+| ``dblclick()`` | ✔️ | ✔️ |
+| ``hover()`` | ✔️ | ✔️ |
+| ``fill()`` | ✔️ | ✔️ |
+| ``type()`` | ✔️ | ✔️ |
+| ``press()`` | ✔️ | ✔️ |
+| ``check()`` | ✔️ | ✔️ |
+| ``uncheck()`` | ✔️ | ✔️ |
+| ``selectOption()`` | ✔️ | ✔️ |
+| ``setInputFiles()`` | ✔️ | ✔️ |
+| ``focus()`` | ✔️ | ✔️ |
+| ``scrollIntoViewIfNeeded()`` | ✔️ | ✔️ |
+| ``dragTo()`` | ❌ | ✔️ |
+
+### Locator Getter Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``innerText()`` | ✔️ | ✔️ |
+| ``innerHTML()`` | ✔️ | ✔️ |
+| ``textContent()`` | ✔️ | ✔️ |
+| ``inputValue()`` | ✔️ | ✔️ |
+| ``getAttribute()`` | ✔️ | ✔️ |
+| ``isChecked()`` | ✔️ | ✔️ |
+| ``isDisabled()`` | ✔️ | ✔️ |
+| ``isEditable()`` | ✔️ | ✔️ |
+| ``isVisible()`` | ✔️ | ✔️ |
+| ``isHidden()`` | ✔️ | ✔️ |
+
+### Locator State / Condition Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``waitFor()`` | ✔️ | ✔️ |
+| ``waitForSelector()`` | ✔️ | ✔️ |
+| ``waitForElementState()`` | ✔️ | ✔️ |
+| ``waitForLoadState()`` | ✔️ | ✔️ |
+| ``waitForURL()`` | ✔️ | ✔️ |
+| ``waitForNavigation()`` | ✔️ | ✔️ |
+| ``waitForTimeout()`` | ✔️ | ✔️ |
+
+### Locator‑Based Expect Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``expect(locator).toBeVisible()`` | ✔️ | ✔️ |
+| ``expect(locator).toBeHidden()`` | ✔️ | ✔️ |
+| ``expect(locator).toBeEnabled()`` | ✔️ | ✔️ |
+| ``expect(locator).toBeDisabled()`` | ✔️ | ✔️ |
+| ``expect(locator).toBeChecked()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveText()`` | ✔️ | ✔️ |
+| ``expect(locator).toContainText()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveAttribute()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveClass()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveCount()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveValue()`` | ✔️ | ✔️ |
+| ``expect(locator).toHaveJSProperty()`` | ❌ | ✔️ |
+
+### Value‑Based Expect Methods
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| ``expect(value).toBe()`` | ✔️ | ✔️ |
+| ``expect(value).not.toBe()`` | ✔️ | ✔️ |
+| ``expect(value).toEqual()`` | ✔️ | ✔️ |
+| ``expect(value).toBeTruthy()`` | ✔️ | ✔️ |
+| ``expect(value).toBeFalsy()`` | ✔️ | ✔️ |
+| ``expect(value).toBeGreaterThan()`` | ✔️ | ✔️ |
+| ``expect(value).toBeLessThan()`` | ✔️ | ✔️ |
+| ``expect(value).toContain()`` | ✔️ | ✔️ |
+| ``expect(value).toMatch()`` | ✔️ | ✔️ |
+
+### Browser / Page Features
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| **Launch Chromium** | ✔️ | ✔️ |
+| **Connect to existing browser** | ✔️ | ✔️ |
+| **Multiple contexts** | ❌ | ✔️ |
+| **Multiple pages** | ✔️ | ✔️ |
+| **Tracing** | ❌ | ✔️ |
+| **HAR recording** | ❌ | ✔️ |
+| **Network interception** | ✔️ | ✔️ |
+| **Console event capture** | ✔️ | ✔️ |
+| **Dialog handling** | ✔️ | ✔️ |
+| **Screenshot** | ✔️ | ✔️ |
+| **PDF generation** | ❌ | ✔️ |
+| **Video recording** | ❌ | ✔️ |
 
 ## Requirements
 
