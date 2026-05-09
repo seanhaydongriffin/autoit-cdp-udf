@@ -55,6 +55,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Works with Chrome, Edge, Brave, Chromium ²
 
 ¹ not developed
+
 ² currently only chrome supported
 
 ### Comparing CDP UDF to Playwright
