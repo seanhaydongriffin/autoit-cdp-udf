@@ -10,20 +10,6 @@ $hTimer = TimerInit()
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.page()
 
-
-
-    Local $step1 = _AutoItObject_Create()
-
-	_AutoItObject_AddMethod($step1, "__default__", "_another")
-
-    ; Add destructors
-    _AutoItObject_AddDestructor($step1, "_DestructorForSomeObject1")
-
-
-
-
-
-
 BasicWebPageTest($chrome, $page)
 
 $fDiff = TimerDiff($hTimer)
@@ -41,6 +27,7 @@ Func BasicWebPageTest($chrome, $page)
 			With teststep("Verify the main page")
 				$title = $page.locator("//head/title")
 				.expect($title).toHaveText("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
+
 				.expect($title.innerText()).toBe("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
 				.expect($title).toBeHidden(@ScriptLineNumber)
 				.expect($title.isVisible()).toBe(False, @ScriptLineNumber)
@@ -92,35 +79,3 @@ Func BasicWebPageTest($chrome, $page)
 
 EndFunc
 
-
-
-
-Func step1()
-    Local $oObject = _AutoItObject_Create()
-
-	_AutoItObject_AddMethod($oObject, "__default__", "_another")
-
-    ; Add destructors
-    _AutoItObject_AddDestructor($oObject, "_DestructorForSomeObject1")
-
-    Return $oObject
-EndFunc    ;==>_PrintConsoleObject
-
-Func another()
-    Local $oObject = _AutoItObject_Create()
-
-	;_AutoItObject_AddMethod($oObject, "__default__", "_another")
-
-    ; Add destructors
-    _AutoItObject_AddDestructor($oObject, "_DestructorForSomeObject2")
-
-    Return $oObject
-EndFunc    ;==>_PrintConsoleObject
-
-Func _DestructorForSomeObject1($oSelf)
-	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : "yo" = ' & "yo" & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-EndFunc    ;==>_DestructorForSomeObject1
-
-Func _DestructorForSomeObject2($oSelf)
-	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : "yo2" = ' & "yo2" & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-EndFunc    ;==>_DestructorForSomeObject1

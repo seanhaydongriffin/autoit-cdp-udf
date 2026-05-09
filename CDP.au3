@@ -50,6 +50,7 @@ _AutoItObject_Startup()
 
 Global $cdpConfig = _AutoItObject_Create()
 _AutoItObject_AddProperty($cdpConfig, "timeout", $ELSCOPE_PUBLIC, 5000)
+_AutoItObject_AddProperty($cdpConfig, "debug", $ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "infoPopups", $ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", $ELSCOPE_PUBLIC, False)
 
@@ -93,7 +94,7 @@ Func __CDP_Send($sJson)
 
     ; rc = CURLcode, sent = bytes sent
     If $rc <> 0 Or $sent = 0 Then
-        ConsoleWrite("CDP SEND: failed rc=" & $rc & " sent=" & $sent & @CRLF)
+        if $cdp.config.debug = True Then ConsoleWrite("CDP SEND: failed rc=" & $rc & " sent=" & $sent & @CRLF)
         Return SetError(1, $rc, False)
     EndIf
 
@@ -115,7 +116,7 @@ Func _CDP_SendCommand($sMethod, $oParams = Null)
         $sJson &= ',"params":' & $sParams & '}'
     EndIf
 
-    ;ConsoleWrite("SEND: " & $sJson & @CRLF)
+    if $cdp.config.debug = True Then ConsoleWrite("SEND: " & $sJson & @CRLF)
 
     __CDP_Send($sJson)
     Return $iId
@@ -154,14 +155,14 @@ Func _CDP_RecvLoop()
 
     ; rc = 56 (CURLE_RECV_ERROR) means connection closed
     If $rc = 56 Then
-        ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
+        if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
         AdlibUnRegister("_CDP_RecvLoop")
         Return
     EndIf
 
     ; Any other non-zero rc is a real error
     If $rc <> 0 Then
-        ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
+        if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
         AdlibUnRegister("_CDP_RecvLoop")
         Return
     EndIf
@@ -172,7 +173,7 @@ Func _CDP_RecvLoop()
 	EndIf
 
     ; Normal message handling
-    ;ConsoleWrite("RECV: " & $msg & @CRLF)
+    if $cdp.config.debug = True then ConsoleWrite("RECV: " & $msg & @CRLF)
 
     Local $msgObj = _JsonC_TokenerParse($msg)
     If $msgObj = 0 Then
@@ -635,42 +636,83 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			; Create the Locator object
 
 			Local $oLocator = _AutoItObject_Create()
-			;Local $oExpect = _AutoItObject_Create()
 
-			; Add methods
+			; Add action methods
 
-			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
-			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")
-			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
-			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
-			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
-			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
-			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")
-			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")
-			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")
-			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
-			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
-			_AutoItObject_AddMethod($oLocator, "setValue", "_CDP_Locator_SetValue")
+			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; partially done
+			_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; todo
+			_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; todo
+			_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")											; todo
+			_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; todo
+			_AutoItObject_AddMethod($oLocator, "type", "_CDP_Locator_Type")											; todo
+			_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")										; todo
+			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; todo
+			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; todo
+			_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; todo
+			_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; todo
+			_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; todo
+			_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; todo
+			_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo
+			_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo
+			_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo
+			_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo
+			_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo
 
-			;_AutoItObject_AddMethod($oExpect, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
-			;_AutoItObject_AddMethod($oExpect, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
-			;_AutoItObject_AddMethod($oExpect, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")
-			;_AutoItObject_AddMethod($oExpect, "toBeDisabled", "_CDP_Expect_Locator_ToBeDisabled")
-			;_AutoItObject_AddMethod($oExpect, "toBeChecked", "_CDP_Expect_Locator_ToBeChecked")
-			;_AutoItObject_AddMethod($oExpect, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
-			;_AutoItObject_AddMethod($oExpect, "toContainText", "_CDP_Expect_Locator_ToContainText")
-			;_AutoItObject_AddMethod($oExpect, "toHaveAttribute", "_CDP_Expect_Locator_ToHaveAttribute")
-			;_AutoItObject_AddMethod($oExpect, "toHaveValue", "_CDP_Expect_Locator_ToHaveValue")
-			;_AutoItObject_AddMethod($oExpect, "toHaveCount", "_CDP_Expect_Locator_ToHaveCount")
+			; Add getter methods
+
+			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done
+			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done
+			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done
+			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")			; done
+			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done
+			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done
+			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done
+			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done
+			_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")							; todo
+			_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")								; todo
+			_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")									; todo
+			_AutoItObject_AddMethod($oLocator, "evaluateAll", "_CDP_Locator_EvaluateAll")							; todo
+			_AutoItObject_AddMethod($oLocator, "elementHandle", "_CDP_Locator_ElementHandle")						; todo
+			_AutoItObject_AddMethod($oLocator, "allInnerTexts", "_CDP_Locator_AllInnerTexts")						; todo
+			_AutoItObject_AddMethod($oLocator, "allTextContents", "_CDP_Locator_AllTextContents")					; todo
+			_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")										; todo
+
+			; Add state methods
+
+			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done
+			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done
+			_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done
+			_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")								; done
+			_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")								; todo
+			_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done
+
+			; Add waiting methods
+
+			_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")									; todo
+			_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")			; todo
+			_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")					; todo
+
+			; Add locator-creation methods
+
+			_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")									; todo
+			_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")										; todo
+			_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")											; todo
+			_AutoItObject_AddMethod($oLocator, "first", "_CDP_Locator_First")										; todo
+			_AutoItObject_AddMethod($oLocator, "last", "_CDP_Locator_Last")											; todo
+			_AutoItObject_AddMethod($oLocator, "getByRole", "_CDP_Locator_GetByRole")								; todo
+			_AutoItObject_AddMethod($oLocator, "getByText", "_CDP_Locator_GetByText")								; todo
+			_AutoItObject_AddMethod($oLocator, "getByLabel", "_CDP_Locator_GetByLabel")								; todo
+			_AutoItObject_AddMethod($oLocator, "getByPlaceholder", "_CDP_Locator_GetByPlaceholder")					; todo
+			_AutoItObject_AddMethod($oLocator, "getByAltText", "_CDP_Locator_GetByAltText")							; todo
+			_AutoItObject_AddMethod($oLocator, "getByTitle", "_CDP_Locator_GetByTitle")								; todo
+			_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")							; todo
 
 			; Add properties
 
 			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
 			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, Null)
-			;_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
-			;_AutoItObject_AddProperty($oExpect, "parent", $ELSCOPE_PUBLIC, $oLocator)
 
 			Return $oLocator
 		EndIf
@@ -733,20 +775,80 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	Local $oLocator = _AutoItObject_Create()
 	Local $oExpect = _AutoItObject_Create()
 
-	; Add methods
+	; Add action methods
 
 	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
+	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")
+	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")
+	_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")
+	_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")
+	_AutoItObject_AddMethod($oLocator, "type", "_CDP_Locator_Type")
+	_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")
+	_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")
+	_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")
+	_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")
+	_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")
+	_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")
+	_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")
+	_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")
+	_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")
+	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")
+	_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")
+	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")
+
+	; Add getter methods
+
+	_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")
 	_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
 	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
 	_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
 	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
+	_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")
+	_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")
+	_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")
+	_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")
+	_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")
+	_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")
+	_AutoItObject_AddMethod($oLocator, "evaluateAll", "_CDP_Locator_EvaluateAll")
+	_AutoItObject_AddMethod($oLocator, "elementHandle", "_CDP_Locator_ElementHandle")
+	_AutoItObject_AddMethod($oLocator, "allInnerTexts", "_CDP_Locator_AllInnerTexts")
+	_AutoItObject_AddMethod($oLocator, "allTextContents", "_CDP_Locator_AllTextContents")
+	_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")
+
+	; Add state methods
+
+	_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
+	_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
+	_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")
+	_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")
+	_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")
+	_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")
+
+	; Add waiting methods
+
+	_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")
+	_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")
+	_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")
+
+	; Add locator-creation methods
+
+	_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")
+	_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")
+	_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")
+	_AutoItObject_AddMethod($oLocator, "first", "_CDP_Locator_First")
+	_AutoItObject_AddMethod($oLocator, "last", "_CDP_Locator_Last")
+	_AutoItObject_AddMethod($oLocator, "getByRole", "_CDP_Locator_GetByRole")
+	_AutoItObject_AddMethod($oLocator, "getByText", "_CDP_Locator_GetByText")
+	_AutoItObject_AddMethod($oLocator, "getByLabel", "_CDP_Locator_GetByLabel")
+	_AutoItObject_AddMethod($oLocator, "getByPlaceholder", "_CDP_Locator_GetByPlaceholder")
+	_AutoItObject_AddMethod($oLocator, "getByAltText", "_CDP_Locator_GetByAltText")
+	_AutoItObject_AddMethod($oLocator, "getByTitle", "_CDP_Locator_GetByTitle")
+	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")
 
 	; Add properties
 
 	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
-	;_AutoItObject_AddProperty($oLocator, "expect", $ELSCOPE_PUBLIC, $oExpect)
 	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
-	;_AutoItObject_AddProperty($oExpect, "target", $ELSCOPE_PUBLIC, $oLocator)
 
 	Return $oLocator
 
@@ -761,7 +863,7 @@ EndFunc
 ; Locator_GetAttribute()
 ; Locator_IsVisible()
 
-
+#cs
 Func ValueObj($value)
 
 	; string object
@@ -784,12 +886,127 @@ Func ValueObj($value)
 
     Return $o
 EndFunc
+#ce
 
-
-Func _CDP_Locator_TextContent($oSelf)
+Func _CDP_Locator_Click($self, $waitForLoad = False)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("functionDeclaration", "function() { this.click(); }")
+    $oParams.Add("awaitPromise", False)
+
+    _CDP_SendCommand("Runtime.callFunctionOn", $oParams)
+
+	if $waitForLoad = True Then _CDP_WaitForLoad()
+
+EndFunc
+
+Func _CDP_Locator_DoubleClick($self, $waitForLoad = False)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Hover($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Tap($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Fill($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Type($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Press($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Check($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Uncheck($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_SetChecked($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_SelectOption($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Focus($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Blur($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Clear($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_DragTo($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_SetInputFiles($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_DispatchEvent($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_ScrollIntoViewIfNeeded($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_TextContent($self)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $self.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.textContent; }")
     $oParams.Add("returnByValue", True)
 
@@ -800,27 +1017,16 @@ Func _CDP_Locator_TextContent($oSelf)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-    Return ValueObj($valueVal)
+    ;Return ValueObj($valueVal)
+    Return $valueVal
 
 EndFunc
 
-Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
+
+Func _CDP_Locator_InnerText($self)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
-    $oParams.Add("functionDeclaration", "function() { this.click(); }")
-    $oParams.Add("awaitPromise", False)
-
-    _CDP_SendCommand("Runtime.callFunctionOn", $oParams)
-
-	if $waitForLoad = True Then _CDP_WaitForLoad()
-
-EndFunc
-
-Func _CDP_Locator_InnerText($oSelf)
-
-    Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("objectId", $self.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.innerText; }")
     $oParams.Add("returnByValue", True)
 
@@ -835,30 +1041,31 @@ Func _CDP_Locator_InnerText($oSelf)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	$oSelf.value = $valueVal
+	$self.value = $valueVal
 
-    Return ValueObj($valueVal)
+    ;Return ValueObj($valueVal)
+	Return $valueVal
 EndFunc
 
-Func _CDP_Locator_InnerTextCRStripped($oSelf)
-	$text = _CDP_Locator_InnerText($oSelf)
+Func _CDP_Locator_InnerTextCRStripped($self)
+	$text = _CDP_Locator_InnerText($self)
 	Return StringStripCR($text)
 EndFunc
 
-Func _CDP_Locator_InnerTextLFStripped($oSelf)
-	$text = _CDP_Locator_InnerText($oSelf)
+Func _CDP_Locator_InnerTextLFStripped($self)
+	$text = _CDP_Locator_InnerText($self)
 	Return StringReplace($text, @LF, "")
 EndFunc
 
-Func _CDP_Locator_InnerTextReplace($oSelf, $searchString, $replaceString)
-	$text = _CDP_Locator_InnerText($oSelf)
+Func _CDP_Locator_InnerTextReplace($self, $searchString, $replaceString)
+	$text = _CDP_Locator_InnerText($self)
 	Return StringReplace($text, $searchString, $replaceString)
 EndFunc
 
-Func _CDP_Locator_InnerHTML($oSelf)
+Func _CDP_Locator_InnerHTML($self)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("objectId", $self.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.innerHTML; }")
     $oParams.Add("returnByValue", True)
 
@@ -870,15 +1077,17 @@ Func _CDP_Locator_InnerHTML($oSelf)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	;$oSelf.value = $valueVal
+	;$self.value = $valueVal
 
-    Return ValueObj($valueVal)
+    ;Return ValueObj($valueVal)
+	Return $valueVal
+
 EndFunc
 
-Func _CDP_Locator_InputValue($oSelf)
+Func _CDP_Locator_InputValue($self)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("objectId", $self.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.value; }")
     $oParams.Add("returnByValue", True)
 
@@ -890,16 +1099,17 @@ Func _CDP_Locator_InputValue($oSelf)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	;$oSelf.value = $valueVal
+	;$self.value = $valueVal
 
-    Return ValueObj($valueVal)
+    ;Return ValueObj($valueVal)
+	Return $valueVal
 EndFunc
 
-Func _CDP_Locator_GetAttribute($oSelf, $name)
+Func _CDP_Locator_GetAttribute($self, $name)
 
     Local $oParams = _CDP_NewParams()
-	$oSelf.nodeId = __CDP_Object_To_Node($oSelf.objectId)
-    $oParams.Add("nodeId", $oSelf.nodeId)
+	$self.nodeId = __CDP_Object_To_Node($self.objectId)
+    $oParams.Add("nodeId", $self.nodeId)
 
     Local $resp = _CDP_SendSync("DOM.getAttributes", $oParams)
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -909,11 +1119,60 @@ Func _CDP_Locator_GetAttribute($oSelf, $name)
 	$attributes = _JsonC_ObjectArrayGetObjects($attributesObj)
 	For $attribute in $attributes
 		$attributeVal = _JsonC_ObjectGetValue($attribute)
-		if $getNextAttribute = True Then Return ValueObj($attributeVal)
+		;if $getNextAttribute = True Then Return ValueObj($attributeVal)
+		if $getNextAttribute = True Then Return $attributeVal
 		if $attributeVal = $name Then $getNextAttribute = True
 	Next
 
 	Return Null
+EndFunc
+
+Func _CDP_Locator_BoundingBox($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Screenshot($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Evaluate($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_EvaluateAll($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_ElementHandle($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_AllInnerTexts($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_AllTextContents($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Count($self)
+
+	; Todo
+
 EndFunc
 
 Func __CDP_Locator_IsVisibleValue($objectId)
@@ -933,22 +1192,170 @@ Func __CDP_Locator_IsVisibleValue($objectId)
 
 EndFunc
 
-Func _CDP_Locator_IsVisible($oSelf)
-
-	$val = __CDP_Locator_IsVisibleValue($oSelf.objectId) <> 0
-    Return ValueObj($val)
+Func _CDP_Locator_IsVisible($self)
+	$val = __CDP_Locator_IsVisibleValue($self.objectId) <> 0
+    ;Return ValueObj($val)
+	Return $val
 EndFunc
 
-Func _CDP_Locator_IsHidden($oSelf)
-
-	$val = Not ( __CDP_Locator_IsVisibleValue($oSelf.objectId) <> 0 )
-    Return ValueObj($val)
+Func _CDP_Locator_IsHidden($self)
+	$val = Not ( __CDP_Locator_IsVisibleValue($self.objectId) <> 0 )
+    ;Return ValueObj($val)
+	Return $val
 EndFunc
 
-Func _CDP_Locator_SetValue($oSelf, $value)
+Func __CDP_Locator_IsDisabledValue($objectId)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $objectId)
+    $oParams.Add("functionDeclaration", "function() { return this.disabled; }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+
+	; Convert numeric 0/1 → AutoIt boolean
+    Return (_JsonC_ObjectGetBoolean($valueObj) <> 0)
+
+EndFunc
+
+Func _CDP_Locator_IsEnabled($self)
+	Return Not __CDP_Locator_IsDisabledValue($self.objectId)
+EndFunc
+
+Func _CDP_Locator_IsDisabled($self)
+	Return __CDP_Locator_IsDisabledValue($self.objectId)
+EndFunc
+
+Func _CDP_Locator_IsEditable($self)
+	; Todo
+EndFunc
+
+
+Func _CDP_Locator_IsChecked($self)
+
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("functionDeclaration", "function() { return this.checked; }")
+    $oParams.Add("returnByValue", True)
+
+    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+
+	; Convert numeric 0/1 → AutoIt boolean
+    Return (_JsonC_ObjectGetBoolean($valueObj) <> 0)
+
+EndFunc
+
+
+
+Func _CDP_Locator_WaitFor($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_WaitForElementState($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_WaitForSelector($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Locator($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Filter($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Nth($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_First($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_Last($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByRole($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByText($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByLabel($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByPlaceholder($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByAltText($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByTitle($self)
+
+	; Todo
+
+EndFunc
+
+Func _CDP_Locator_GetByTestId($self)
+
+	; Todo
+
+EndFunc
+
+
+
+
+
+
+
+
+Func _CDP_Locator_SetValue($self, $value)
 
 	Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $oSelf.objectId)
+    $oParams.Add("objectId", $self.objectId)
     $oParams.Add("functionDeclaration", "function(value) { this.value = value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); }")
     $oParams.Add("arguments", '[{"value":"' & $value & '"}]')
 
@@ -1041,11 +1448,20 @@ Func _CDP_Test_Step_Expect($self, $subject)
     Local $obj = _AutoItObject_Create()
     _AutoItObject_AddProperty($obj, "parent", $ELSCOPE_PUBLIC, $self)
     _AutoItObject_AddProperty($obj, "subject", $ELSCOPE_PUBLIC, $subject)
-    _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
-    _AutoItObject_AddMethod($obj, "toBe", "_CDP_Expect_Value_ToBe")
-    _AutoItObject_AddMethod($obj, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
     _AutoItObject_AddMethod($obj, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")
+    _AutoItObject_AddMethod($obj, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")
+    _AutoItObject_AddMethod($obj, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")
+    _AutoItObject_AddMethod($obj, "toBeDisabled", "_CDP_Expect_Locator_ToBeDisabled")
+    _AutoItObject_AddMethod($obj, "toBeChecked", "_CDP_Expect_Locator_ToBeChecked")
+    _AutoItObject_AddMethod($obj, "toHaveText", "_CDP_Expect_Locator_ToHaveText")
     _AutoItObject_AddMethod($obj, "toContainText", "_CDP_Expect_Locator_ToContainText")
+    _AutoItObject_AddMethod($obj, "toHaveAttribute", "_CDP_Expect_Locator_ToHaveAttribute")
+    _AutoItObject_AddMethod($obj, "toHaveClass", "_CDP_Expect_Locator_ToHaveClass")
+    _AutoItObject_AddMethod($obj, "toHaveCount", "_CDP_Expect_Locator_ToHaveCount")
+    _AutoItObject_AddMethod($obj, "toHaveValue", "_CDP_Expect_Locator_ToHaveValue")
+    _AutoItObject_AddMethod($obj, "toHaveJSProperty", "_CDP_Expect_Locator_ToHaveJSProperty")
+
+	_AutoItObject_AddMethod($obj, "toBe", "_CDP_Expect_Value_ToBe")
     _AutoItObject_AddMethod($obj, "toContain", "_CDP_Expect_Value_ToContain")
     ; add more assertion methods here
     Return $obj
@@ -1063,26 +1479,25 @@ EndFunc
 
 Func _CDP_Expect_Locator_ToBeVisible($self, $scriptLineNumber = "")
 
-	if _CDP_Locator_IsVisible($self.subject).value Then
-
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is visible", @ScriptLineNumber)
+	if _CDP_Locator_IsVisible($self.subject) = True Then
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is visible", $scriptLineNumber)
 		Return True
     EndIf
 
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not visible", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not visible", $scriptLineNumber)
     Return False
 
 EndFunc
 
 Func _CDP_Expect_Locator_ToBeHidden($self, $scriptLineNumber = "?")
 
-	if _CDP_Locator_IsHidden($self.subject).value Then
-
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is hidden", @ScriptLineNumber)
+	;if _CDP_Locator_IsHidden($self.subject).value Then
+	if _CDP_Locator_IsHidden($self.subject) = True Then
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "object [" & $self.subject.objectId & "] is hidden", $scriptLineNumber)
 		Return True
     EndIf
 
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not hidden", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "object [" & $self.subject.objectId & "] is not hidden", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1101,27 +1516,27 @@ EndFunc
 
 Func _CDP_Expect_Locator_ToHaveText($self, $expected, $scriptLineNumber = "?")
 
-	Local $actual = _CDP_Locator_TextContent($self.subject).value
+	Local $actual = _CDP_Locator_TextContent($self.subject)
 
 	If $actual = $expected Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", $scriptLineNumber)
 		Return True
     EndIf
 
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
     Return False
 EndFunc
 
 Func _CDP_Expect_Locator_ToContainText($self, $expected, $scriptLineNumber = "?")
 
-	Local $actual = _CDP_Locator_TextContent($self.subject).value
+	Local $actual = _CDP_Locator_TextContent($self.subject)
 
 	If StringInStr($actual, $expected) > 0 Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", @ScriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", $scriptLineNumber)
         Return True
     EndIf
 
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
     Return False
 EndFunc
 
@@ -1138,15 +1553,13 @@ Func _CDP_Expect_Locator_ToHaveCount($self, $expected, $scriptLineNumber = "?")
 EndFunc
 
 Func _CDP_Expect_Value_ToBe($self, $expected, $scriptLineNumber = "?")
-    Local $actual = $self.subject.value
-    If $actual = $expected Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", @ScriptLineNumber)
+	Local $actual = $self.subject
+	If $actual = $expected Then
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "expected [" & $expected & "] and got [" & $actual & "]", $scriptLineNumber)
 		Return True
     EndIf
-
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
     Return False
-
 EndFunc
 
 Func _CDP_Expect_Value_ToEqual($self, $expected, $scriptLineNumber = "?")
@@ -1154,15 +1567,13 @@ Func _CDP_Expect_Value_ToEqual($self, $expected, $scriptLineNumber = "?")
 EndFunc
 
 Func _CDP_Expect_Value_ToContain($self, $expected, $scriptLineNumber = "?")
-    Local $actual = $self.subject.value
+    Local $actual = $self.subject
 	If StringInStr($actual, $expected) > 0 Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", @ScriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), True, "actual text contains [" & $expected & "]", $scriptLineNumber)
         Return True
     EndIf
-
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", @ScriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $g_CDP_IndentLevel + 1), False, "expected actual text to contain [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
     Return False
-
 EndFunc
 
 Func _CDP_Expect_Value_ToBeTruthy($self, $expected, $scriptLineNumber = "?")
