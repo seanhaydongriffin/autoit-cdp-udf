@@ -3,7 +3,7 @@
     <h2 align="center"The AutoIT CDP UDF</h2>
 </p>
 
-[![license](https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx)][license]
+[![license](https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx)]
 [![contributors](https://img.shields.io/github/contributors/Danp2/au3WebDriver.svg?style=flat-square&logo=github)][Contributors]
 ![repo size](https://img.shields.io/github/repo-size/Danp2/au3WebDriver.svg?style=flat-square&logo=github)
 [![last commit](https://img.shields.io/github/last-commit/Danp2/au3WebDriver.svg?style=flat-square&logo=github)](https://github.com/Danp2/au3WebDriver/commits/master)
