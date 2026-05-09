@@ -320,5 +320,5 @@ Distributed under the MIT License. See [LICENSE] for more information.
   - *AutoItObject* by the AutoItObject-Team (monoceres, trancexx, Kip and progandy)
   - *JsonC* by Sean Griffin
   - *Curl* by Ward and modified by Beege and Sean Griffin
-- Thanks to Microsoft Copilot for being my coding-buddy 24/7
+- Thanks to Microsoft Copilot for being my every-optimistic coding-buddy 24/7
 
