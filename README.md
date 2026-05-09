@@ -206,8 +206,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Browser / Page Features
 
-| Feature name | CDP UDF | Playwright | CDP Commands |
-| --- | --- | --- | --- |
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
 | **Launch Chromium** | ✔️ | ✔️ |
 | **Connect to existing browser** | ✔️ | ✔️ |
 | **Multiple contexts** | ❌ | ✔️ |
