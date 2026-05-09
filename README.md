@@ -29,10 +29,13 @@ The goal of this project is to bring a clean, fluent, reliable automation experi
 
 - Locators  
 - Assertions  
-- Page interactions  
-- Network interception  
-- JavaScript evaluation  
-- Event handling  
+- Page interactions
+- Test framework
+- Network interception ¹ 
+- JavaScript evaluation ¹ 
+- Event handling ¹ 
+
+¹ not developed
 
 If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
