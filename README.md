@@ -57,6 +57,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium ²
 - Automatic browser download via Selenium Manager
+- Scripts compiled into standalone executables for users to simply run
 
 ¹ not developed<br>
 ² currently only chrome supported
