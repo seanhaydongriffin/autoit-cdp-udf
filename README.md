@@ -54,7 +54,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
   - retrieving attributes, text, values
   - checking visibility, enabled/disabled, checked state
 - Network request/response interception ¹
-- Event‑driven architecture
+- Object-driven scripts and Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium ²
 - Automatic browser download via Selenium Manager
 - Scripts compiled into standalone executables for users to simply run
