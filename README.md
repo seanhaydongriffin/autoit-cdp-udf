@@ -38,7 +38,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ## Features
 
-- Direct CDP communication (no WebDriver, no Selenium)
+- Direct CDP communication via WebSockets (no WebDriver, no Selenium)
 - Playwright‑inspired Locator API
 - Auto‑waiting for elements and conditions ¹
 - Built‑in assertion system (`expect()`)
@@ -98,24 +98,24 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``click()`` | ❌¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent, Runtime.callFunctionOn |
+| ``click()`` | ❌¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
 | ``dblclick()`` | ❌ | ✔️ | same as click (twice) |
-| ``hover()`` | ❌ | ✔️ | DOM.getBoxModel, Input.dispatchMouseEvent |
+| ``hover()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``tap()`` | ❌ | ✔️ | Input.dispatchTouchEvent |
-| ``fill()`` | ✔️ | ✔️ | DOM.focus, Input.insertText, Runtime.callFunctionOn |
+| ``fill()`` | ✔️ | ✔️ | DOM.focus<br>Input.insertText<br>Runtime.callFunctionOn |
 | ``type()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
 | ``press()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
-| ``check()`` | ❌ | ✔️ | Runtime.callFunctionOn, Input.dispatchMouseEvent |
-| ``uncheck()`` | ❌ | ✔️ | Runtime.callFunctionOn, Input.dispatchMouseEvent |
+| ``check()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
+| ``uncheck()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
 | ``setChecked()`` | ❌ | ✔️ | ?
-| ``selectOption()`` | ❌ | ✔️ | Runtime.callFunctionOn, DOM.dispatchEvent |
+| ``selectOption()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>DOM.dispatchEvent |
 | ``focus()`` | ❌ | ✔️ | DOM.focus |
 | ``blur()`` | ❌ | ✔️ | Runtime.callFunctionOn |
 | ``clear()`` | ❌ | ✔️ | Runtime.callFunctionOn |
-| ``dragTo()`` | ❌ | ✔️ | DOM.getBoxModel, Input.dispatchMouseEvent |
+| ``dragTo()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``setInputFiles()`` | ❌ | ✔️ | DOM.setFileInputFiles |
 | ``dispatchEvent()`` | ❌ | ✔️ | DOM.dispatchEvent |
-| ``scrollIntoViewIfNeeded()`` | ❌ | ✔️ | DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn |
+| ``scrollIntoViewIfNeeded()`` | ❌ | ✔️ | DOM.scrollIntoViewIfNeeded<br>Runtime.callFunctionOn |
 
 ### Locator Getter Methods
 
