@@ -233,6 +233,20 @@ Example launch:
 
 ## Getting Started
 
+Try the following examples from the main folder that demonstrate the UDF functions.
+
+| Script | Features Included |
+| --- | --- |
+| Example Default Chrome.au3 | Test of a Basic Web Page using default (pre-installed) Chrome browser |
+| Example Default Headless Chrome.au3 | Test of a Basic Web Page using default (pre-installed) Chrome browser in headless mode |
+| Example Playwright Chrome.au3 |  |
+| Example Playwright Headless Chrome.au3 |  |
+| Example Element Attributes.au3 |  |
+| Example Multiple Elements.au3 |  |
+| Example Basic Inputs.au3 |  |
+| Example Number Inputs.au3 |  |
+| Example Default Chrome.au3 |  |
+
 
 ## Configuration
 
