@@ -65,22 +65,16 @@ Func Curl_Ws_Recv($Handle, $iMax = 4096)
     Return SetExtended($rc, BinaryToString($bin))
 EndFunc
 
-;Func Curl_Get($url, $Slist, $username = "", $password = "")
 Func Curl_Get($url, $username = "", $password = "")
 	Local $Curl = Curl_Easy_Init()
 	If Not $Curl Then Return
-	;$iBufferSize = 32 ;128
 
 	Local $Html = $Curl ; any number as identify
 	Local $Header = $Curl + 1 ; any number as identify
 
 	Curl_Easy_Setopt($Curl, $CURLOPT_URL, $url)
-	;Curl_Easy_Setopt($Curl, $CURLOPT_FOLLOWLOCATION, 1)
-	;Curl_Easy_Setopt($Curl, $CURLOPT_PROXY, "localhost:8888")
 
-	;Curl_Easy_Setopt ( $Curl, $CURLOPT_ACCEPT_ENCODING, '' ) ; Possible values : '', 'identity', 'deflate' or 'gzip'
 	Curl_Easy_Setopt ( $Curl, $CURLOPT_ACCEPT_ENCODING, 'gzip, deflate, br, zstd' ) ; Possible values : '', 'identity', 'deflate' or 'gzip'
-	;Curl_Easy_Setopt ( $Curl, $CURLOPT_BUFFERSIZE, $iBufferSize )
 
 	Curl_Easy_Setopt($Curl, $CURLOPT_USERNAME, $username)
 	Curl_Easy_Setopt($Curl, $CURLOPT_PASSWORD, $password)
@@ -91,7 +85,6 @@ Func Curl_Get($url, $username = "", $password = "")
 	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEFILE, $CookieFile)
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
-	;Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
 	Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)
 
 	;peer verification
@@ -99,17 +92,10 @@ Func Curl_Get($url, $username = "", $password = "")
  	Curl_Easy_Setopt($Curl, $CURLOPT_SSL_VERIFYPEER, 0)
 
 	Local $Code = Curl_Easy_Perform($Curl)
-	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $Code = ' & $Code & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 	Local $response = ""
 
 	If $Code = $CURLE_OK Then
-		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $CURLE_OK = ' & $CURLE_OK & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-		;ConsoleWrite($CookieFile & @CRLF & FileRead(@ScriptDir & "\" & $CookieFile) & @CRLF)
-		;ConsoleWrite("Content Type: " & Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE) & @LF)
-		;ConsoleWrite("Download Size: " & Curl_Easy_GetInfo($Curl, $CURLINFO_SIZE_DOWNLOAD) & @LF)
-		;ConsoleWrite('Header: ' & @CRLF & BinaryToString(Curl_Data_Get($Header)) & @LF)
  		$response = BinaryToString(Curl_Data_Get($Html))
-		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $response = ' & $response & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 	Else
 		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
 	EndIf
@@ -133,7 +119,6 @@ Func Curl_Post($url, $Slist, $Post, $username = "", $password = "")
 
 	Curl_Easy_Setopt($Curl, $CURLOPT_URL, $url)
 	Curl_Easy_Setopt($Curl, $CURLOPT_FOLLOWLOCATION, 1)
-	;Curl_Easy_Setopt($Curl, $CURLOPT_PROXY, "127.0.0.1:8888")
 	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEDATA, $Html)
 	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEJAR, $CookieFile)
@@ -150,16 +135,10 @@ Func Curl_Post($url, $Slist, $Post, $username = "", $password = "")
  	Curl_Easy_Setopt($Curl, $CURLOPT_SSL_VERIFYPEER, 0)
 
 	Local $Code = Curl_Easy_Perform($Curl)
-	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $Code = ' & $Code & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 	Local $response = ""
 
 	If $Code = $CURLE_OK Then
-		;ConsoleWrite($CookieFile & @CRLF & FileRead(@ScriptDir & "\" & $CookieFile) & @CRLF)
-		;ConsoleWrite("Content Type: " & Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE) & @LF)
-		;ConsoleWrite("Download Size: " & Curl_Easy_GetInfo($Curl, $CURLINFO_SIZE_DOWNLOAD) & @LF)
-		;ConsoleWrite('Header: ' & @CRLF & BinaryToString(Curl_Data_Get($Header)) & @LF)
  		$response = BinaryToString(Curl_Data_Get($Html))
-		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $response = ' & $response & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 	Else
 		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
 	EndIf
@@ -196,7 +175,6 @@ Func Curl_UploadFile($url, $Slist, $filepath, $username = "", $password = "")
     Curl_Easy_Setopt($Curl, $CURLOPT_WRITEDATA, $Html)
 
 	Curl_Easy_Setopt($Curl, $CURLOPT_FOLLOWLOCATION, 1)
-	;Curl_Easy_Setopt($Curl, $CURLOPT_PROXY, "127.0.0.1:8888")
     Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
     Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
     Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)

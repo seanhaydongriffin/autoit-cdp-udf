@@ -416,11 +416,6 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
     Local $targetIdObj = _JsonC_ObjectObjectGet($resultObj, "targetId")
     Local $targetIdVal = _JsonC_ObjectGetValue($targetIdObj)
 
-	; get the targets
-
-    ;$resp = _CDP_SendSync("Target.getTargets")
-	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $resp = ' & $resp & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
 	; attach to the target
 
     Local $oParams = _CDP_NewParams()
@@ -492,8 +487,6 @@ EndFunc
 #region --- Page Class ---
 
 Func _CDP_Page_Goto($oSelf, $url)
-
-;	_CDP_Navigate($url)
 
     Local $oParams = ObjCreate("Scripting.Dictionary")
     $oParams.Add("url", $url)
@@ -855,36 +848,6 @@ EndFunc
 
 #region --- Locator Class ---
 
-; Locator_Create()
-; Locator_Resolve()
-; Locator_GetAttribute()
-; Locator_IsVisible()
-
-#cs
-Func ValueObj($value)
-
-	; string object
-    Local $o = _AutoItObject_Create()
-    _AutoItObject_AddProperty($o, "value", $ELSCOPE_PUBLIC, $value)
-    _AutoItObject_AddProperty($o, "__default__", $ELSCOPE_PUBLIC, $value)
-
-    ; expect object
-    Local $expect = _AutoItObject_Create()
-    _AutoItObject_AddMethod($expect, "toBe", "_CDP_Expect_Value_ToBe")
-    ;_AutoItObject_AddMethod($expect, "toHaveText", "_CDP_Expect_ToHaveText")
-    ;_AutoItObject_AddMethod($expect, "toContainText", "_CDP_Expect_ToContainText")
-    _AutoItObject_AddMethod($expect, "toEqual", "_CDP_Expect_Value_ToEqual")
-    _AutoItObject_AddMethod($expect, "toContain", "_CDP_Expect_Value_ToContain")
-    _AutoItObject_AddMethod($expect, "toBeTruthy", "_CDP_Expect_Value_ToBeTruthy")
-    _AutoItObject_AddMethod($expect, "toBeFalsy", "_CDP_Expect_Value_ToBeFalsy")
-
-	_AutoItObject_AddProperty($expect, "parent", $ELSCOPE_PUBLIC, $o)
-	;_AutoItObject_AddProperty($o, "expect", $ELSCOPE_PUBLIC, $expect)
-
-    Return $o
-EndFunc
-#ce
-
 Func _CDP_Locator_Click($self, $waitForLoad = False)
 
     Local $oParams = _CDP_NewParams()
@@ -899,21 +862,15 @@ Func _CDP_Locator_Click($self, $waitForLoad = False)
 EndFunc
 
 Func _CDP_Locator_DoubleClick($self, $waitForLoad = False)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Hover($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Tap($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Fill($self, $value)
@@ -928,81 +885,55 @@ Func _CDP_Locator_Fill($self, $value)
 EndFunc
 
 Func _CDP_Locator_Type($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Press($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Check($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Uncheck($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_SetChecked($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_SelectOption($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Focus($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Blur($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Clear($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_DragTo($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_SetInputFiles($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_DispatchEvent($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_ScrollIntoViewIfNeeded($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_TextContent($self)
@@ -1019,7 +950,6 @@ Func _CDP_Locator_TextContent($self)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetString($valueObj)
 
-    ;Return ValueObj($valueVal)
     Return $valueVal
 
 EndFunc
@@ -1034,9 +964,6 @@ Func _CDP_Locator_InnerText($self)
 
     Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
 
-	;$json_str = _JsonC_ObjectToJsonString($resp)
-	;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $json_str = ' & $json_str & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
     ; Extract the "result.value"
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -1045,7 +972,6 @@ Func _CDP_Locator_InnerText($self)
 
 	$self.value = $valueVal
 
-    ;Return ValueObj($valueVal)
 	Return $valueVal
 EndFunc
 
@@ -1079,9 +1005,6 @@ Func _CDP_Locator_InnerHTML($self)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	;$self.value = $valueVal
-
-    ;Return ValueObj($valueVal)
 	Return $valueVal
 
 EndFunc
@@ -1101,9 +1024,6 @@ Func _CDP_Locator_InputValue($self)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	;$self.value = $valueVal
-
-    ;Return ValueObj($valueVal)
 	Return $valueVal
 EndFunc
 
@@ -1130,51 +1050,35 @@ Func _CDP_Locator_GetAttribute($self, $name)
 EndFunc
 
 Func _CDP_Locator_BoundingBox($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Screenshot($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Evaluate($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_EvaluateAll($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_ElementHandle($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_AllInnerTexts($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_AllTextContents($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Count($self)
-
 	; Todo
-
 EndFunc
 
 Func __CDP_Locator_IsVisibleValue($objectId)
@@ -1196,13 +1100,11 @@ EndFunc
 
 Func _CDP_Locator_IsVisible($self)
 	$val = __CDP_Locator_IsVisibleValue($self.objectId) <> 0
-    ;Return ValueObj($val)
 	Return $val
 EndFunc
 
 Func _CDP_Locator_IsHidden($self)
 	$val = Not ( __CDP_Locator_IsVisibleValue($self.objectId) <> 0 )
-    ;Return ValueObj($val)
 	Return $val
 EndFunc
 
@@ -1271,84 +1173,56 @@ Func _CDP_Locator_IsChecked($self)
 
 EndFunc
 
-
-
 Func _CDP_Locator_WaitFor($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_WaitForElementState($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_WaitForSelector($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Locator($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Filter($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Nth($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_First($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_Last($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByRole($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByText($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByLabel($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByPlaceholder($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByAltText($self)
-
 	; Todo
-
 EndFunc
 
 Func _CDP_Locator_GetByTitle($self)
@@ -1358,13 +1232,6 @@ EndFunc
 Func _CDP_Locator_GetByTestId($self)
 	; Todo
 EndFunc
-
-
-
-
-
-
-
 
 
 #endregion
@@ -1763,7 +1630,6 @@ Func _CDP_Expect_Value_ToThrow($self, $expected, $scriptLineNumber = "")
 EndFunc
 
 
-
 #endregion
 
 
@@ -1890,8 +1756,6 @@ Func __CDP_ConsoleWriteUTF8($sText)
 	; ChrW(0x200B) enforces unicode fallback fonts in windows console
     ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
 EndFunc
-
-
 
 Func ErrFunc($oError)
 	ConsoleWrite("!>COM Error !"&@CRLF&"!>"&@TAB&"Number: "&Hex($oError.Number,8)&@CRLF&"!>"&@TAB&"Windescription: "&StringRegExpReplace($oError.windescription,"\R$","")&@CRLF&"!>"&@TAB&"Source: "&$oError.source&@CRLF&"!>"&@TAB&"Description: "&$oError.description&@CRLF&"!>"&@TAB&"Helpfile: "&$oError.helpfile&@CRLF&"!>"&@TAB&"Helpcontext: "&$oError.helpcontext&@CRLF&"!>"&@TAB&"Lastdllerror: "&$oError.lastdllerror&@CRLF&"!>"&@TAB&"Scriptline: "&$oError.scriptline&@CRLF)
