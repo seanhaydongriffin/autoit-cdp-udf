@@ -40,19 +40,22 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 - Direct CDP communication (no WebDriver, no Selenium)
 - Playwright‑inspired Locator API
-- Auto‑waiting for elements and conditions
+- Auto‑waiting for elements and conditions ¹
 - Built‑in assertion system (`expect()`)
 - Support for:
   - navigation
   - clicking
   - typing
   - filling
-  - evaluating JavaScript
+  - evaluating JavaScript ¹
   - retrieving attributes, text, values
   - checking visibility, enabled/disabled, checked state
-- Network request/response interception
+- Network request/response interception ¹
 - Event‑driven architecture
-- Works with Chrome, Edge, Brave, Chromium
+- Works with Chrome, Edge, Brave, Chromium ²
+
+¹ not developed
+² currently only chrome supported
 
 ### Comparing CDP UDF to Playwright
 
