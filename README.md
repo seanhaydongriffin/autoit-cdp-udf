@@ -79,18 +79,20 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Locator‑Creation Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
-| ``locator(selector)`` | ✔️ | ✔️ |
-| ``getByText()`` | ✔️ | ✔️ |
-| ``getByRole()`` | ❌ | ✔️ |
-| ``getByTestId()`` | ✔️ | ✔️ |
-| ``getByLabel()`` | ❌ | ✔️ |
-| ``getByPlaceholder()`` | ❌ | ✔️ |
-| ``frameLocator()`` | ✔️ | ✔️ |
-| ``nth()`` | ✔️ | ✔️ |
-| ``first()`` | ✔️ | ✔️ |
-| ``last()`` | ✔️ | ✔️ |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
+| ``locator(selector)`` | ✔️ | ✔️ | No CDP — internal selector logic |
+| ``filter`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``nth()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``first()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``last()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByRole()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByText()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByLabel()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByPlaceholder()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByAltText()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByTitle()`` | ❌ | ✔️ | No CDP — internal selector logic |
+| ``getByTestId()`` | ❌ | ✔️ | No CDP — internal selector logic |
 
 ### Locator Action Methods
 
