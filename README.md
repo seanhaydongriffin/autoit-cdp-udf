@@ -44,7 +44,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Direct CDP communication (no WebDriver, no Selenium) via WebSockets
 - Playwright‑inspired API
 - Extremely lightweight (no bulky tech stack, no Node.js, no npm, no reporters, no trace viewers)
-- Extremely fast 
+- Extremely fast script runs
 - Auto‑waiting for elements and conditions ¹
 - Built‑in assertion system (`expect()`)
 - Support for:
