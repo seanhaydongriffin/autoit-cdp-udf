@@ -12,12 +12,10 @@
 
 <p align="center">
   <a href="#description">Description</a> •
-  <a href="#documentation">Documentation</a> •
   <a href="#features">Features</a> •
-  <a href="#comparison">Comparison</a> •
+  <a href="#requirements">Requirements</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#configuration">Configuration</a> •
-  <a href="#contributing">Contributing</a> •
   <a href="#license">License</a> •
   <a href="#acknowledgements">Acknowledgements</a>
 </p>
@@ -37,8 +35,6 @@ The goal of this project is to bring a clean, fluent, reliable automation experi
 - Event handling  
 
 If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
-
----
 
 ## Features
 
@@ -194,6 +190,14 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Chromium‑based browser with remote debugging enabled
 
 Example launch:
+
+
+## Getting Started
+
+
+## Configuration
+
+
 
 ## License
 
