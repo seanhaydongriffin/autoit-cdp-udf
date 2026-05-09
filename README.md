@@ -121,16 +121,33 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``innerText()`` | ✔️ | ✔️ |
-| ``innerHTML()`` | ✔️ | ✔️ |
-| ``textContent()`` | ✔️ | ✔️ |
-| ``inputValue()`` | ✔️ | ✔️ |
-| ``getAttribute()`` | ✔️ | ✔️ |
-| ``isChecked()`` | ✔️ | ✔️ |
-| ``isDisabled()`` | ✔️ | ✔️ |
-| ``isEditable()`` | ✔️ | ✔️ |
-| ``isVisible()`` | ✔️ | ✔️ |
-| ``isHidden()`` | ✔️ | ✔️ |
+| ``textContent()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``innerText()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``innerTextCRStripped()`` | ✔️ | ❌ | Runtime.callFunctionOn |
+| ``innerTextLFStripped()`` | ✔️ | ❌ | Runtime.callFunctionOn |
+| ``innerTextReplace()`` | ✔️ | ❌ | Runtime.callFunctionOn |
+| ``innerHTML()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``inputValue()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``getAttribute()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``boundingBox()`` | ❌ | ✔️ | DOM.getBoxModel |
+| ``screenshot()`` | ❌ | ✔️ | DOM.getBoxModel<br>Page.captureScreenshot |
+| ``evaluate()`` | ❌ | ✔️ | Runtime.callFunctionOn |
+| ``evaluateAll()`` | ❌ | ✔️ | Runtime.callFunctionOn |
+| ``elementHandle()`` | ❌ | ✔️ | DOM.resolveNode |
+| ``allInnerTexts()`` | ❌ | ✔️ | Runtime.callFunctionOn |
+| ``allTextContents()`` | ❌ | ✔️ | Runtime.callFunctionOn |
+| ``count()`` | ❌ | ✔️ | DOM.querySelectorAll |
+
+### Locator State Methods
+
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
+| ``isVisible()`` | ✔️ | ✔️ | Runtime.callFunctionOn, DOM.getBoxModel |
+| ``isHidden()`` | ✔️ | ✔️ | same as isVisible |
+| ``isEnabled()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``isDisabled()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``isEditable()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``isChecked()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 
 ### Locator State / Condition Methods
 
