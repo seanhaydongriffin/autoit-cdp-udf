@@ -1,10 +1,7 @@
 <p align="center">
   <img src="images/icon.png" width="176" alt="CDP UDF logo">
 </p>
-
 <h3 align="center">AutoIt CDP UDF</h3>
-
-
 <p align="center">
   <img src="https://img.shields.io/github/license/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=spdx">
   <img src="https://img.shields.io/github/contributors/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=github">
@@ -12,8 +9,6 @@
   <img src="https://img.shields.io/badge/os-windows-yellow?style=flat-square&logo=windows">
   <img src="https://img.shields.io/github/stars/seanhaydongriffin/autoit-cdp-udf?color=blueviolet&logo=reverbnation&logoColor=white&style=flat-square">
 </p>
-
-[Description](#description) | [Documentation](#documentation) | [Features](#features) | [Getting started](#getting-started) | [Configuration](#configuration) | [Contributing](#contributing) | [License](#license) | [Acknowledgements](#acknowledgements)
 
 <p align="center">
   <a href="#description">Description</a> •
