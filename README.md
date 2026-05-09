@@ -1,6 +1,6 @@
 <p align="center">
     <img src="images/icon.png" width="176" />
-    <h2 align="center">Welcome to <code>AutoIT CDP UDF</code></h2>
+    <h2 align="center">Welcome to the AutoIT CDP UDF</h2>
 </p>
 
 # AutoIt CDP UDF
