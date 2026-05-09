@@ -149,17 +149,13 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 | ``isEditable()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 | ``isChecked()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 
-### Locator State / Condition Methods
+### Locator Waiting Methods
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``waitFor()`` | ✔️ | ✔️ |
-| ``waitForSelector()`` | ✔️ | ✔️ |
-| ``waitForElementState()`` | ✔️ | ✔️ |
-| ``waitForLoadState()`` | ✔️ | ✔️ |
-| ``waitForURL()`` | ✔️ | ✔️ |
-| ``waitForNavigation()`` | ✔️ | ✔️ |
-| ``waitForTimeout()`` | ✔️ | ✔️ |
+| ``waitFor()`` | ❌ | ✔️ | DOM.querySelector<br>Runtime.callFunctionOn<br>DOM.getBoxModel
+| ``waitForElementState()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>DOM.getBoxModel
+| ``waitForSelector()`` | ❌ | ✔️ | DOM.querySelector<br>DOM.querySelectorAll
 
 ### Locator‑Based Expect Methods
 
