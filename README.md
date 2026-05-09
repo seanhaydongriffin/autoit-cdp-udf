@@ -162,20 +162,20 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Locator‑Based Expect Methods
 
-| Feature name | CDP UDF | Playwright | CDP Commands |
+| Feature name | CDP UDF | Playwright | Uses |
 | --- | --- | --- | --- |
-| ``expect(locator).toBeVisible()`` | ✔️ | ✔️ |
-| ``expect(locator).toBeHidden()`` | ✔️ | ✔️ |
-| ``expect(locator).toBeEnabled()`` | ✔️ | ✔️ |
-| ``expect(locator).toBeDisabled()`` | ✔️ | ✔️ |
-| ``expect(locator).toBeChecked()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveText()`` | ✔️ | ✔️ |
-| ``expect(locator).toContainText()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveAttribute()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveClass()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveCount()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveValue()`` | ✔️ | ✔️ |
-| ``expect(locator).toHaveJSProperty()`` | ❌ | ✔️ |
+| ``expect(locator).toBeVisible()`` | ✔️ | ✔️ | isVisible() |
+| ``expect(locator).toBeHidden()`` | ✔️ | ✔️ | isHidden() |
+| ``expect(locator).toBeEnabled()`` | ✔️ | ✔️ | isEnabled() |
+| ``expect(locator).toBeDisabled()`` | ✔️ | ✔️ | isDisabled() |
+| ``expect(locator).toBeChecked()`` | ✔️ | ✔️ | isChecked() |
+| ``expect(locator).toHaveText()`` | ✔️ | ✔️ | textContent() |
+| ``expect(locator).toContainText()`` | ✔️ | ✔️ | textContent() |
+| ``expect(locator).toHaveAttribute()`` | ✔️ | ✔️ | getAttribute() |
+| ``expect(locator).toHaveClass()`` | ❌ | ✔️ | |
+| ``expect(locator).toHaveCount()`` | ❌ | ✔️ | |
+| ``expect(locator).toHaveValue()`` | ❌ | ✔️ | |
+| ``expect(locator).toHaveJSProperty()`` | ❌ | ✔️ | |
 
 ### Value‑Based Expect Methods
 
