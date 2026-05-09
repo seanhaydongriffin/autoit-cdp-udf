@@ -208,8 +208,8 @@ Distributed under the MIT License. See [LICENSE] for more information.
 - Opportunity by [GitHub](https://github.com)
 - Badges by [Shields](https://shields.io)
 - Thanks to the authors of the Third-Party UDFs
-  - *Json UDF* by @Ward and @Jos
-  - *WinHTTP UDF* by @trancexx/[@dragana-r](https://github.com/dragana-r)
-  - *WinHttp_WebSocket UDF* by @Danp2
+  - *AutoItObject* by the AutoItObject-Team (monoceres, trancexx, Kip and progandy)
+  - *JsonC* by Sean Griffin
+  - *Curl* by Ward and modified by Beege and Sean Griffin
 
 
