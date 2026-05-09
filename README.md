@@ -237,10 +237,10 @@ Try the following examples from the main folder that demonstrate the UDF functio
 
 | Script | Features Included |
 | --- | --- |
-| Example Default Chrome.au3 | Basic Web Page test of default (pre-installed) Chrome browser |
-| Example Default Headless Chrome.au3 | Basic Web Page test of default (pre-installed) Chrome browser in headless mode |
-| Example Playwright Chrome.au3 |  |
-| Example Playwright Headless Chrome.au3 |  |
+| Example Default Chrome.au3 | Basic Web Page test in default "pre-installed" Chrome browser |
+| Example Default Headless Chrome.au3 | Basic Web Page test in default "pre-installed" Chrome browser & headless mode |
+| Example Playwright Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium browser |
+| Example Playwright Headless Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium Headless Shell |
 | Example Element Attributes.au3 |  |
 | Example Multiple Elements.au3 |  |
 | Example Basic Inputs.au3 |  |
