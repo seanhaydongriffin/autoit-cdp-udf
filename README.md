@@ -15,6 +15,17 @@
 
 [Description](#description) | [Documentation](#documentation) | [Features](#features) | [Getting started](#getting-started) | [Configuration](#configuration) | [Contributing](#contributing) | [License](#license) | [Acknowledgements](#acknowledgements)
 
+<p align="center">
+  <a href="#description">Description</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#features">Features</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a> •
+  <a href="#acknowledgements">Acknowledgements</a>
+</p>
+
 ## Description
 
 A modern, high‑performance AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
