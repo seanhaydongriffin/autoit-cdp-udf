@@ -1,4 +1,6 @@
-<img src="images/icon.png" width="176" alt="CDP UDF logo">
+<p align="center">
+  <img src="images/icon.png" width="176" alt="CDP UDF logo">
+</p>
 <h3 align="center">AutoIt CDP UDF</h3>
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx">
