@@ -60,7 +60,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium ²
 - Automatic browser download via Selenium Manager
-- Portable self-contained dependency-free zero-install scripts that can automate Chrome on any Windows machine
+- Portable self-contained dependency-free zero-install scripts (executables) that can automate Chrome on any Windows machine
 
 ¹ not developed<br>
 ² currently only chrome supported
