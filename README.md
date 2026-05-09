@@ -14,7 +14,7 @@
   <a href="#description">Description</a> •
   <a href="#documentation">Documentation</a> •
   <a href="#features">Features</a> •
-  <a href="#comparison">Features</a> •
+  <a href="#comparison">Comparison</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#contributing">Contributing</a> •
