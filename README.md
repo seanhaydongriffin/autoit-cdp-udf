@@ -228,9 +228,6 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - JSON UDF (JsonC recommended)  
 - Chromium‑based browser with remote debugging enabled
 
-Example launch:
-
-
 ## Getting Started
 
 Try the following examples from the main folder that demonstrate the UDF functions.
