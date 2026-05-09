@@ -59,6 +59,29 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ---
 
+## Comparison
+
+Comparing CDP UDF to Playwright
+
+    ✔️ = supported
+    ❌ = not supported
+    (CDP UDF refers to your AutoIt CDP UDF)
+
+### Test Runner & Assertions
+
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
+| **Test runner included** | ✔️ | ✔️ |
+| ``test``** object** | ✔️ | ✔️ |
+| ``test.step()`` | ✔️ | ✔️ |
+| ``test.expect()`` | ✔️ | ✔️ |
+| ``test.describe()`` | ❌ | ✔️ |
+| ``test.beforeEach()`` | ❌ | ✔️ |
+| ``test.afterEach()`` | ❌ | ✔️ |
+| **Parallel test execution** | ❌ | ✔️ |
+| **Automatic trace viewer** | ❌ | ✔️ |
+| **Automatic HTML report** | ❌ | ✔️ |    
+
 ## Requirements
 
 - AutoIt v3.3.16.0 or later  
