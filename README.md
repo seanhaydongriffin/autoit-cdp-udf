@@ -241,7 +241,8 @@ Try the following examples from the main folder that demonstrate the UDF functio
 | Example Default Headless Chrome.au3 | Basic Web Page test in default "pre-installed" Chrome browser & headless mode |
 | Example Playwright Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium browser |
 | Example Playwright Headless Chrome.au3 | Basic Web Page test in optionally installed Playwright Chromium Headless Shell |
-| Example Element Attributes.au3 |  |
+| Example Element Attributes.au3 | Web Element Attributes test |
+| Example Element Attributes Debug.au3 | Web Element Attributes test with debugging enabled |
 | Example Multiple Elements.au3 |  |
 | Example Basic Inputs.au3 |  |
 | Example Number Inputs.au3 |  |
