@@ -38,7 +38,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ## Features
 
-- Direct CDP communication via WebSockets (no WebDriver, no Selenium)
+- Direct CDP communication (no WebDriver, no Selenium) via WebSockets
 - Playwright‑inspired Locator API
 - Auto‑waiting for elements and conditions ¹
 - Built‑in assertion system (`expect()`)
