@@ -58,7 +58,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium
 
-**Comparing CDP UDF to Playwright**
+### Comparing CDP UDF to Playwright
 
     ✔️ = supported
     ❌ = not supported    
