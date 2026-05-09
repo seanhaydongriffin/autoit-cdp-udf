@@ -302,7 +302,7 @@ Categories:
 
 The AutoIT SciTE script editor does not have UTF8 / Unicode support enabled by default.  This is required to display the unicode characters (like ▶✓) in the test output (see the "Example output" above).
 
-To enable this in the AutoIT editor add the following line to your SciTEUser.properties file (via menu Options > Open User Options File) :
+To enable this in the AutoIT editor add the following line to your **SciTEUser.properties** file (via menu **Options > Open User Options File**) :
 
 <code>output.code.page=65001</code>
 
