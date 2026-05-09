@@ -1,3 +1,8 @@
+<p align="center">
+    <img src="images/icon.png" width="176" />
+    <h2 align="center">Welcome to <code>au3WebDriver</code></h2>
+</p>
+
 # AutoIt CDP UDF
 
 A modern, high‑performance AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
