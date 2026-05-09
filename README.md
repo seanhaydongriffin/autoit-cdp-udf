@@ -96,26 +96,31 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Locator Action Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
-| ``click()`` | ✔️ | ✔️ |
-| ``dblclick()`` | ✔️ | ✔️ |
-| ``hover()`` | ✔️ | ✔️ |
-| ``fill()`` | ✔️ | ✔️ |
-| ``type()`` | ✔️ | ✔️ |
-| ``press()`` | ✔️ | ✔️ |
-| ``check()`` | ✔️ | ✔️ |
-| ``uncheck()`` | ✔️ | ✔️ |
-| ``selectOption()`` | ✔️ | ✔️ |
-| ``setInputFiles()`` | ✔️ | ✔️ |
-| ``focus()`` | ✔️ | ✔️ |
-| ``scrollIntoViewIfNeeded()`` | ✔️ | ✔️ |
-| ``dragTo()`` | ❌ | ✔️ |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
+| ``click()`` | ✔️ | ✔️ | DOM.getBoxModel, Input.dispatchMouseEvent, Runtime.callFunctionOn |
+| ``dblclick()`` | ✔️ | ✔️ | same as click (twice) |
+| ``hover()`` | ✔️ | ✔️ | DOM.getBoxModel, Input.dispatchMouseEvent |
+| ``tap()`` | ✔️ | ✔️ | Input.dispatchTouchEvent |
+| ``fill()`` | ✔️ | ✔️ | DOM.focus, Input.insertText, Runtime.callFunctionOn |
+| ``type()`` | ✔️ | ✔️ | Input.dispatchKeyEvent |
+| ``press()`` | ✔️ | ✔️ | Input.dispatchKeyEvent |
+| ``check()`` | ✔️ | ✔️ | Runtime.callFunctionOn, Input.dispatchMouseEvent |
+| ``uncheck()`` | ✔️ | ✔️ | Runtime.callFunctionOn, Input.dispatchMouseEvent |
+| ``setChecked()`` | ✔️ | ✔️ | ?
+| ``selectOption()`` | ✔️ | ✔️ | Runtime.callFunctionOn, DOM.dispatchEvent |
+| ``focus()`` | ✔️ | ✔️ | DOM.focus |
+| ``blur()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``clear()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
+| ``dragTo()`` | ❌ | ✔️ | DOM.getBoxModel, Input.dispatchMouseEvent |
+| ``setInputFiles()`` | ✔️ | ✔️ | DOM.setFileInputFiles |
+| ``dispatchEvent()`` | ✔️ | ✔️ | DOM.dispatchEvent |
+| ``scrollIntoViewIfNeeded()`` | ✔️ | ✔️ | DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn |
 
 ### Locator Getter Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | ``innerText()`` | ✔️ | ✔️ |
 | ``innerHTML()`` | ✔️ | ✔️ |
 | ``textContent()`` | ✔️ | ✔️ |
@@ -129,8 +134,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Locator State / Condition Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | ``waitFor()`` | ✔️ | ✔️ |
 | ``waitForSelector()`` | ✔️ | ✔️ |
 | ``waitForElementState()`` | ✔️ | ✔️ |
@@ -141,8 +146,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Locator‑Based Expect Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | ``expect(locator).toBeVisible()`` | ✔️ | ✔️ |
 | ``expect(locator).toBeHidden()`` | ✔️ | ✔️ |
 | ``expect(locator).toBeEnabled()`` | ✔️ | ✔️ |
@@ -158,8 +163,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Value‑Based Expect Methods
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | ``expect(value).toBe()`` | ✔️ | ✔️ |
 | ``expect(value).not.toBe()`` | ✔️ | ✔️ |
 | ``expect(value).toEqual()`` | ✔️ | ✔️ |
@@ -172,8 +177,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Browser / Page Features
 
-| Feature name | CDP UDF | Playwright |
-| --- | --- | --- |
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | **Launch Chromium** | ✔️ | ✔️ |
 | **Connect to existing browser** | ✔️ | ✔️ |
 | **Multiple contexts** | ❌ | ✔️ |
