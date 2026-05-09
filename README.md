@@ -120,6 +120,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 | ``dispatchEvent()`` | ❌ | ✔️ | DOM.dispatchEvent |
 | ``scrollIntoViewIfNeeded()`` | ❌ | ✔️ | DOM.scrollIntoViewIfNeeded<br>Runtime.callFunctionOn |
 
+¹ partially done
+
 ### Locator Getter Methods
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
@@ -182,14 +184,25 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
 | ``expect(value).toBe()`` | ✔️ | ✔️ |
-| ``expect(value).not.toBe()`` | ✔️ | ✔️ |
-| ``expect(value).toEqual()`` | ✔️ | ✔️ |
-| ``expect(value).toBeTruthy()`` | ✔️ | ✔️ |
-| ``expect(value).toBeFalsy()`` | ✔️ | ✔️ |
+| ``expect(value).toEqual()`` | ❌ | ✔️ |
+| ``expect(value).toStrictEqual()`` | ❌ | ✔️ |
 | ``expect(value).toBeGreaterThan()`` | ✔️ | ✔️ |
+| ``expect(value).toBeGreaterThanOrEqual()`` | ✔️ | ✔️ |
 | ``expect(value).toBeLessThan()`` | ✔️ | ✔️ |
+| ``expect(value).toBeLessThanOrEqual()`` | ✔️ | ✔️ |
+| ``expect(value).toBeCloseTo()`` | ✔️¹ | ✔️ |
 | ``expect(value).toContain()`` | ✔️ | ✔️ |
 | ``expect(value).toMatch()`` | ✔️ | ✔️ |
+| ``expect(value).toBeTruthy()`` | ✔️ | ✔️ |
+| ``expect(value).toBeFalsy()`` | ✔️ | ✔️ |
+| ``expect(value).toBeNull()`` | ✔️ | ✔️ |
+| ``expect(value).toBeDefined()`` | ✔️ | ✔️ |
+| ``expect(value).toBeUndefined()`` | ✔️¹ | ✔️ |
+| ``expect(value).toContainEqual()`` | ❌ | ✔️ |
+| ``expect(value).toHaveLength()`` | ✔️ | ✔️ |
+| ``expect(value).toThrow()`` | ❌ | ✔️ |
+
+¹ untested
 
 ### Browser / Page Features
 
