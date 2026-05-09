@@ -237,8 +237,8 @@ Try the following examples from the main folder that demonstrate the UDF functio
 
 | Script | Features Included |
 | --- | --- |
-| Example Default Chrome.au3 | Test of a Basic Web Page using default (pre-installed) Chrome browser |
-| Example Default Headless Chrome.au3 | Test of a Basic Web Page using default (pre-installed) Chrome browser in headless mode |
+| Example Default Chrome.au3 | Basic Web Page test of default (pre-installed) Chrome browser |
+| Example Default Headless Chrome.au3 | Basic Web Page test of default (pre-installed) Chrome browser in headless mode |
 | Example Playwright Chrome.au3 |  |
 | Example Playwright Headless Chrome.au3 |  |
 | Example Element Attributes.au3 |  |
