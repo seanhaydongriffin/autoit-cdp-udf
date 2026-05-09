@@ -181,8 +181,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Value‑Based Expect Methods
 
-| Feature name | CDP UDF | Playwright | CDP Commands |
-| --- | --- | --- | --- |
+| Feature name | CDP UDF | Playwright |
+| --- | --- | --- |
 | ``expect(value).toBe()`` | ✔️ | ✔️ |
 | ``expect(value).toEqual()`` | ❌ | ✔️ |
 | ``expect(value).toStrictEqual()`` | ❌ | ✔️ |
