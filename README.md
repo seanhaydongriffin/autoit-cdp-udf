@@ -1,2 +1,47 @@
-# AutoIT CDP UDF
-A high‑performance AutoIt UDF for direct browser automation using the Chrome DevTools Protocol (CDP), inspired by Playwright.
+# AutoIt CDP UDF
+
+A modern, high‑performance AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
+This library provides a Playwright‑style API for controlling Chromium‑based browsers directly over CDP — **no WebDriver required**.
+
+The goal of this project is to bring a clean, fluent, reliable automation experience to AutoIt, with first‑class support for:
+
+- Locators  
+- Assertions  
+- Page interactions  
+- Network interception  
+- JavaScript evaluation  
+- Event handling  
+
+If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
+
+---
+
+## Features
+
+- Direct CDP communication (no WebDriver, no Selenium)
+- Playwright‑inspired Locator API
+- Auto‑waiting for elements and conditions
+- Built‑in assertion system (`expect()`)
+- Support for:
+  - navigation
+  - clicking
+  - typing
+  - filling
+  - evaluating JavaScript
+  - retrieving attributes, text, values
+  - checking visibility, enabled/disabled, checked state
+- Network request/response interception
+- Event‑driven architecture
+- Works with Chrome, Edge, Brave, Chromium
+
+---
+
+## Requirements
+
+- AutoIt v3.3.16.0 or later  
+- AutoItObject UDF  
+- JSON UDF (JsonC recommended)  
+- Chromium‑based browser with remote debugging enabled
+
+Example launch:
+
