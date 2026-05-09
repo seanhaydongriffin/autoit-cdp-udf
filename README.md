@@ -1,9 +1,15 @@
 <p align="center">
     <img src="images/icon.png" width="176" />
-    <h2 align="center">Welcome to the AutoIT CDP UDF</h2>
+    <h2 align="center"The AutoIT CDP UDF</h2>
 </p>
 
-# AutoIt CDP UDF
+[![license](https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx)][license]
+[![contributors](https://img.shields.io/github/contributors/Danp2/au3WebDriver.svg?style=flat-square&logo=github)][Contributors]
+![repo size](https://img.shields.io/github/repo-size/Danp2/au3WebDriver.svg?style=flat-square&logo=github)
+[![last commit](https://img.shields.io/github/last-commit/Danp2/au3WebDriver.svg?style=flat-square&logo=github)](https://github.com/Danp2/au3WebDriver/commits/master)
+[![release](https://img.shields.io/github/release/Danp2/au3WebDriver.svg?style=flat-square&logo=github)](https://github.com/Danp2/au3WebDriver/releases/latest)
+![os](https://img.shields.io/badge/os-windows-yellow.svg?style=flat-square&logo=windows)
+![stars](https://img.shields.io/github/stars/Danp2/au3WebDriver?color=blueviolet&logo=reverbnation&logoColor=white&style=flat-square)
 
 A modern, high‑performance AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
 This library provides a Playwright‑style API for controlling Chromium‑based browsers directly over CDP — **no WebDriver required**.
