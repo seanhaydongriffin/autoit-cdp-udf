@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-ff69b4.svg?style=flat-square&logo=spdx">
   <img src="https://img.shields.io/github/contributors/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=github">
-  <img src="https://img.shields.io/github/last-commit/seanhaydonggriffin/autoit-cdp-udf?style=flat-square&logo=github">
+  <img src="https://img.shields.io/github/last-commit/seanhaydongriffin/autoit-cdp-udf?style=flat-square&logo=github">
   <img src="https://img.shields.io/badge/os-windows-yellow?style=flat-square&logo=windows">
   <img src="https://img.shields.io/github/stars/seanhaydongriffin/autoit-cdp-udf?color=blueviolet&logo=reverbnation&logoColor=white&style=flat-square">
 </p>
