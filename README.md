@@ -42,7 +42,9 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 ## Features
 
 - Direct CDP communication (no WebDriver, no Selenium) via WebSockets
-- Playwright‑inspired Locator API
+- Playwright‑inspired API
+- Extremely lightweight (no bulky tech stack, no Node.js, no npm, no reporters, no trace viewers)
+- Extremely fast 
 - Auto‑waiting for elements and conditions ¹
 - Built‑in assertion system (`expect()`)
 - Support for:
@@ -54,7 +56,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
   - retrieving attributes, text, values
   - checking visibility, enabled/disabled, checked state
 - Network request/response interception ¹
-- Object-driven scripts and Event‑driven architecture
+- Object-driven test-aware scripts
+- Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium ²
 - Automatic browser download via Selenium Manager
 - Scripts compiled into standalone executables for users to simply run
