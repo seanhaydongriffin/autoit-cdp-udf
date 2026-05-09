@@ -251,7 +251,7 @@ Try the following examples from the main folder that demonstrate the UDF functio
 
 The Basic Web Page test should output the following:
 
-​▶ Test: Basic web page test
+​```▶ Test: Basic web page test
 ​  ▶ Step: Verify Basic Web Page navigation
 ​    ▶ Step: Navigate to evil tester test pages
 ​    ▶ Step: Verify the main page
@@ -295,7 +295,7 @@ Categories:
 ​  ▶ Step: Verify invalid locator
 ​      ✓ Expect: expected Null and got [Null] (line 80)
 
-> BasicWebPageWithStandardBrowser() took n ms.
+> BasicWebPageWithStandardBrowser() took n ms.```
 
 
 
