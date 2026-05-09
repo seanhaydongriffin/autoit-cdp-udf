@@ -56,6 +56,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 - Network request/response interception ¹
 - Event‑driven architecture
 - Works with Chrome, Edge, Brave, Chromium ²
+- Automatic browser download via Selenium Manager
 
 ¹ not developed<br>
 ² currently only chrome supported
