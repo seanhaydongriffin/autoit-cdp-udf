@@ -72,7 +72,7 @@ Comparing CDP UDF to Playwright
 | Feature name | CDP UDF | Playwright |
 | --- | --- | --- |
 | **Test runner included** | ✔️ | ✔️ |
-| ``test``** object** | ✔️ | ✔️ |
+| ``test`` object | ✔️ | ✔️ |
 | ``test.step()`` | ✔️ | ✔️ |
 | ``test.expect()`` | ✔️ | ✔️ |
 | ``test.describe()`` | ❌ | ✔️ |
