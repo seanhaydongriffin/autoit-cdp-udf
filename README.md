@@ -42,7 +42,7 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### How is this different from other automation tools
 
-The CDP UDF automates the browser directly through the browser's developer tools (DevTools) protocol.<br><br>
+The CDP UDF automates the browser directly through the browser's developer tools (DevTools) protocol.<br>
 <p align="left">
   <img src="images/approaches.png" width="400" alt="approaches">
 </p>
@@ -54,7 +54,7 @@ The modern way to automate via devtools protocol:<br><br>
 <p align="left">
   <img src="images/cdp_approach.png" width="400" alt="cdp approach">
 </p>
-
+More detail on modern CDP and BiDi automation in this [Youtube video](https://youtu.be/6oXic6dcn9w?si=vj2kMVGlj9cl0oDe).
 
 
 ## Features
