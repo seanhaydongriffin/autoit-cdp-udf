@@ -22,7 +22,7 @@
 
 ## Description
 
-A modern, high‑performance AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
+A modern, high‑performance, simple-to-use AutoIt UDF for browser automation using the **Chrome DevTools Protocol (CDP)**.  
 This library provides a Playwright‑style API for controlling Chromium‑based browsers directly over CDP — **no WebDriver required**.
 
 The goal of this project is to bring a clean, fluent, reliable automation experience to AutoIt, with first‑class support for:
