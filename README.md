@@ -68,8 +68,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 ### Comparing CDP UDF to Playwright
 
-    ✔️ = supported
-    ❌ = not supported    
+    ✔️ = developed
+    ❌ = not developed    
 
 ### Test Runner & Assertions
 
