@@ -50,7 +50,7 @@ The traditional way to automate via a web driver:<br><br>
 <p align="left">
   <img src="images/web_driver_approach.png" width="400" alt="webdriver approach">
 </p>
-The modern way to automate via devtools protocol and the **CDP UDF**:<br><br>
+The modern way to automate via devtools protocol and the CDP UDF:<br><br>
 <p align="left">
   <img src="images/cdp_approach.png" width="400" alt="cdp approach">
 </p>
