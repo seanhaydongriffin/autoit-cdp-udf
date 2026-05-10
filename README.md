@@ -54,8 +54,8 @@ The modern way to automate via devtools protocol:<br><br>
 <p align="left">
   <img src="images/cdp_approach.png" width="400" alt="cdp approach">
 </p>
-More detail on modern CDP and BiDi automation in this [Youtube video](https://youtu.be/6oXic6dcn9w?si=vj2kMVGlj9cl0oDe).
 
+More detail on modern CDP and BiDi automation in this [Youtube video](https://youtu.be/6oXic6dcn9w?si=vj2kMVGlj9cl0oDe).
 
 ## Features
 
