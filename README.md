@@ -40,6 +40,13 @@ The goal of this project is to bring a clean, fluent, reliable automation experi
 
 If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
+### How is this different from other automation tools
+
+<p align="center">
+  <img src="images/approaches.png" width="400" alt="approaches">
+</p>
+
+
 ## Features
 
 - Direct CDP communication (no WebDriver, no Selenium) via WebSockets
