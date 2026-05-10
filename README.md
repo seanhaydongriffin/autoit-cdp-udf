@@ -322,7 +322,7 @@ Distributed under the MIT License. See [LICENSE] for more information.
 - Badges by [Shields](https://shields.io)
 - Thanks to the authors of the Third-Party UDFs
   - *AutoItObject* by the AutoItObject-Team (monoceres, trancexx, Kip and progandy)
-  - *JsonC* by Sean Griffin
+  - [JsonC](https://github.com/seanhaydongriffin/JsonC-UDF) by Sean Griffin
   - *Curl* by Ward and modified by Beege and Sean Griffin
 - Thanks to Microsoft Copilot for being my every-optimistic coding-buddy 24/7
 
