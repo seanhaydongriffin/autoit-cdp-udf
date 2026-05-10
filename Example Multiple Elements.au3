@@ -12,11 +12,12 @@ With test("Multiple Elements test")
 
 	teststep("Navigate to the page")
 	$page.goto("https://testpages.eviltester.com/pages/basics/multiple-elements-example/")
+	$submitBtn = $page.locator("//button[@id='submitBtn']")
 
 	With teststep("Verify the submit button is disabled")
-		.expect($page.locator("//button[@id='submitBtn']").isDisabled()).toBe(True, @ScriptLineNumber)
-		.expect($page.locator("//button[@id='submitBtn']").isEnabled()).toBe(False, @ScriptLineNumber)
-		.expect($page.locator("//button[@id='submitBtn']")).toBeDisabled(@ScriptLineNumber)
+		.expect($submitBtn.isDisabled()).toBe(True, @ScriptLineNumber)
+		.expect($submitBtn.isEnabled()).toBe(False, @ScriptLineNumber)
+		.expect($submitBtn).toBeDisabled(@ScriptLineNumber)
 	EndWith
 
 	With teststep("Verify the manager radio button state change")
@@ -28,9 +29,9 @@ With test("Multiple Elements test")
 	EndWith
 
 	With teststep("Verify the submit button is now enabled")
-		.expect($page.locator("//button[@id='submitBtn']").isDisabled()).toBe(False, @ScriptLineNumber)
-		.expect($page.locator("//button[@id='submitBtn']").isEnabled()).toBe(True, @ScriptLineNumber)
-		.expect($page.locator("//button[@id='submitBtn']")).toBeEnabled(@ScriptLineNumber)
+		.expect($submitBtn.isDisabled()).toBe(False, @ScriptLineNumber)
+		.expect($submitBtn.isEnabled()).toBe(True, @ScriptLineNumber)
+		.expect($submitBtn).toBeEnabled(@ScriptLineNumber)
 	EndWith
 
 EndWith
