@@ -321,8 +321,8 @@ Distributed under the MIT License. See [LICENSE] for more information.
 - Opportunity by [GitHub](https://github.com)
 - Badges by [Shields](https://shields.io)
 - Thanks to the authors of the Third-Party UDFs
-  - *AutoItObject* by the AutoItObject-Team (monoceres, trancexx, Kip and progandy)
+  - [AutoItObject](https://www.autoitscript.com/forum/topic/110379-autoitobject-udf) by the AutoItObject-Team (monoceres, trancexx, Kip and progandy)
   - [JsonC](https://github.com/seanhaydongriffin/JsonC-UDF) by Sean Griffin
-  - *Curl* by Ward and modified by Beege and Sean Griffin
+  - [Curl](https://www.autoitscript.com/forum/topic/173067-curl-udf-autoit-binary-code-version-of-libcurl-with-ssl-support) by Ward and modified by Beege and Sean Griffin
 - Thanks to Microsoft Copilot for being my every-optimistic coding-buddy 24/7
 
