@@ -230,7 +230,8 @@ If you’ve used Playwright or Puppeteer, the API will feel instantly familiar.
 
 - AutoIt v3.3.16.0 or later  
 - AutoItObject UDF  
-- JSON UDF (JsonC recommended)  
+- JsonC UDF
+- Curl UDF 
 - Chromium‑based browser with remote debugging enabled
 
 ## Getting Started
