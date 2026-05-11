@@ -4,11 +4,11 @@
 <h3 align="center">AutoIt CDP UDF</h3>
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-00b7ff?style=flat-square&logo=spdx&logoColor=white">
-  <img src="https://img.shields.io/github/stars/seanhaydonggriffin/autoit-cdp-udf?style=flat-square&color=00eaff&logo=reverbnation&logoColor=white">
-  <img src="https://img.shields.io/github/last-commit/seanhaydonggriffin/autoit-cdp-udf?style=flat-square&color=009dff&logo=github">
+  <img src="https://img.shields.io/github/stars/seanhaydongriffin/autoit-cdp-udf?style=flat-square&color=00eaff&logo=reverbnation&logoColor=white">
+  <img src="https://img.shields.io/github/last-commit/seanhaydongriffin/autoit-cdp-udf?style=flat-square&color=009dff&logo=github">
   <img src="https://img.shields.io/badge/os-Windows-00c8ff?style=flat-square&logo=windows&logoColor=white">
-  <img src="https://visitor-badge.laobi.icu/badge?page_id=seanhaydonggriffin.autoit-cdp-udf&color=00eaff&style=flat-square">
-  <img src="https://hits.sh/github.com/seanhaydonggriffin/autoit-cdp-udf.svg?style=flat-square&color=00b7ff">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=seanhaydongriffin.autoit-cdp-udf&color=00eaff&style=flat-square">
+  <img src="https://hits.sh/github.com/seanhaydongriffin/autoit-cdp-udf.svg?style=flat-square&color=00b7ff">
 </p>
 
 <p align="center">
