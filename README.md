@@ -104,6 +104,22 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | **Automatic trace viewer** | ❌ | ✔️ |
 | **Automatic HTML report** | ❌ | ✔️ |    
 
+### Page Action Methods
+
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
+| ``goto(url)`` | ✔️¹ | ✔️ | Page.navigate |
+| ``locator(selector)`` | ✔️ | ✔️ | document.evaluate<br>document.querySelector |
+| ``locatorNow(selector)`` | ✔️ | ✔️ | document.evaluate<br>document.querySelector |
+| ``evaluate(expression)`` | ✔️ | ✔️ | Runtime.evaluate |
+
+### Page Getter Methods
+
+| ``url()`` | ✔️ | ✔️ | Runtime.evaluate |
+| ``title()`` | ✔️ | ✔️ | Runtime.evaluate |
+| ``content()`` | ❌ | ✔️ | ? |
+| ``viewportSize()`` | ✔️ | ✔️ | Page.getLayoutMetrics |
+
 ### Locator‑Creation Methods
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
