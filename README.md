@@ -108,13 +108,15 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``goto(url)`` | ✔️¹ | ✔️ | Page.navigate |
+| ``goto(url)`` | ✔️ | ✔️ | Page.navigate |
 | ``locator(selector)`` | ✔️ | ✔️ | document.evaluate<br>document.querySelector |
 | ``locatorNow(selector)`` | ✔️ | ✔️ | document.evaluate<br>document.querySelector |
 | ``evaluate(expression)`` | ✔️ | ✔️ | Runtime.evaluate |
 
 ### Page Getter Methods
 
+| Feature name | CDP UDF | Playwright | CDP Commands |
+| --- | --- | --- | --- |
 | ``url()`` | ✔️ | ✔️ | Runtime.evaluate |
 | ``title()`` | ✔️ | ✔️ | Runtime.evaluate |
 | ``content()`` | ❌ | ✔️ | ? |
