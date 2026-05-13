@@ -6,7 +6,7 @@
 #include "CDP.au3"
 
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
-$page = $chrome.page()
+$page = $chrome.newPage()
 
 With test("Number Inputs test")
 

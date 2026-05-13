@@ -8,7 +8,7 @@
 $hTimer = TimerInit()
 
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
-$page = $chrome.page()
+$page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
 
@@ -27,7 +27,6 @@ Func BasicWebPageTest($chrome, $page)
 			With teststep("Verify the main page")
 				$title = $page.locator("//head/title")
 				.expect($title).toHaveText("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
-
 				.expect($title.innerText()).toBe("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
 				.expect($title).toBeHidden(@ScriptLineNumber)
 				.expect($title.isVisible()).toBe(False, @ScriptLineNumber)

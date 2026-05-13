@@ -26,6 +26,11 @@ FileInstall(".\selenium-manager.exe", ".\")
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 Global $CDP_DISABLE_ALIASES
+Global Enum $CDP_BROWSER, $CDP_PAGE
+
+; Global CDP registry: wsHandle → state object
+Global $g_CDP_Browsers = ObjCreate("Scripting.Dictionary")
+
 
 $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error handler
 
@@ -37,13 +42,7 @@ _JsonC_Startup("json-c.dll")
 _AutoItObject_Startup()
 
 Local $cdpState = _AutoItObject_Create()
-_AutoItObject_AddProperty($cdpState, "activeBrowserWs", 	$ELSCOPE_PUBLIC, Null)
-_AutoItObject_AddProperty($cdpState, "activePageWs",    	$ELSCOPE_PUBLIC, Null)
-_AutoItObject_AddProperty($cdpState, "activeSessionId", 	$ELSCOPE_PUBLIC, Null)
-_AutoItObject_AddProperty($cdpState, "nextId",          	$ELSCOPE_PUBLIC, 1)
 _AutoItObject_AddProperty($cdpState, "indentLevel",     	$ELSCOPE_PUBLIC, 0)
-_AutoItObject_AddProperty($cdpState, "pageLoaded",      	$ELSCOPE_PUBLIC, False)
-_AutoItObject_AddProperty($cdpState, "pending", 			$ELSCOPE_PUBLIC, ObjCreate("Scripting.Dictionary"))
 _AutoItObject_AddProperty($cdpState, "events",  			$ELSCOPE_PUBLIC, ObjCreate("Scripting.Dictionary"))
 
 Global $cdpConfig = _AutoItObject_Create()
@@ -68,8 +67,6 @@ EndIf
 
 $cdp.state.events.Item("Page.loadEventFired") = "_OnPageLoad"
 
-AdlibRegister("_CDP_RecvLoop", 5)
-
 ; UTF8 / Unicode support
 DllCall("kernel32.dll", "bool", "SetConsoleOutputCP", "uint", 65001)
 DllCall("kernel32.dll", "bool", "SetConsoleCP", "uint", 65001)
@@ -88,9 +85,8 @@ Func _CDP_Connect($iUrl)
 
 EndFunc
 
-Func __CDP_Send($sJson)
-    Local $rc = Curl_Ws_Send($cdp.state.activePageWs, $sJson)
-    ;Local $rc = Curl_Ws_Send($sJson)
+Func __CDP_Send($wsHandle, $sJson)
+    Local $rc = Curl_Ws_Send($wsHandle, $sJson)
     Local $sent = @extended
 
     ; rc = CURLcode, sent = bytes sent
@@ -102,13 +98,17 @@ Func __CDP_Send($sJson)
     Return True
 EndFunc
 
-Func _CDP_SendCommand($sMethod, $oParams = Null)
-    Local $iId = $cdp.state.nextId
-    $cdp.state.nextId += 1
+Func _CDP_SendCommand($oContext, $sMethod, $oParams = Null)
+
+	If Not $g_CDP_Browsers.Exists(String($oContext.wsHandle)) Then Return SetError(2, 0, 0)
+	Local $oState = $g_CDP_Browsers.Item(String($oContext.wsHandle))
+
+	; Allocate id
+    Local $iId = $oState.Item("nextId")
+    $oState.Item("nextId") = $iId + 1
 
     Local $sJson = '{"id":' & $iId & ',"method":"' & $sMethod & '"'
-
-	If $cdp.state.activeSessionId <> Null Then $sJson &= ',"sessionId":"' & $cdp.state.activeSessionId & '"'
+	If $oContext.type = $CDP_PAGE Then $sJson &= ',"sessionId":"' & $oContext.sessionId & '"'
 
     If Not IsObj($oParams) Then
         $sJson &= '}'
@@ -119,21 +119,33 @@ Func _CDP_SendCommand($sMethod, $oParams = Null)
 
     if $cdp.config.debug = True Then ConsoleWrite("SEND: " & $sJson & @CRLF)
 
-    __CDP_Send($sJson)
+    __CDP_Send($oContext.wsHandle, $sJson)
     Return $iId
 EndFunc
 
-Func _CDP_SendSync($method, $params = Null, $timeout = 2000)
+Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 2000)
+
+	; 1. Resolve wsHandle key (string)
+    Local $wsKey = String($oContext.wsHandle)
+
+    If Not $g_CDP_Browsers.Exists($wsKey) Then
+        Return SetError(2, 0, Null)
+    EndIf
+
+    ; 2. Get per‑browser CDP state
+    Local $oState = $g_CDP_Browsers.Item($wsKey)
 
 	; Send command → get ID
-    Local $id = _CDP_SendCommand($method, $params)
+    Local $id = _CDP_SendCommand($oContext, $method, $params)
 
     ; Wait for response
     Local $t = TimerInit()
+	Local $pending = $oState.Item("pending")
+
     While TimerDiff($t) < $timeout
-		If $cdp.state.pending.Exists($id) Then
-            Local $resp = $cdp.state.pending.Item($id)
-            $cdp.state.pending.Remove($id)
+		If $pending.Exists($id) Then
+            Local $resp = $pending.Item($id)
+            $pending.Remove($id)
             Return $resp
         EndIf
         Sleep(1)
@@ -144,85 +156,109 @@ EndFunc
 
 Func _CDP_RecvLoop()
 
-	if $cdp.state.activePageWs = Null Then Return
+	; Iterate all browser wsHandles
+    Local $keys = $g_CDP_Browsers.Keys
 
-    Local $msg = Curl_Ws_Recv($cdp.state.activePageWs)
-    Local $rc  = @extended
+	For $i = 0 To UBound($keys) - 1
 
-    ; rc = 81 (CURLE_AGAIN) means no data yet — totally normal
-    If $rc = 81 Then
-		Return
-	EndIf
+		Local $wsHandle = $keys[$i]
+        Local $oState   = $g_CDP_Browsers.Item($wsHandle)
+		Local $msg = Curl_Ws_Recv($wsHandle)
+		Local $rc  = @extended
 
-    ; rc = 56 (CURLE_RECV_ERROR) means connection closed
-    If $rc = 56 Then
-        if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
-        AdlibUnRegister("_CDP_RecvLoop")
-        Return
-    EndIf
+		; rc = 81 (CURLE_AGAIN) means no data yet — totally normal
+		If $rc = 81 Then ContinueLoop
 
-    ; Any other non-zero rc is a real error
-    If $rc <> 0 Then
-        if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
-        AdlibUnRegister("_CDP_RecvLoop")
-        Return
-    EndIf
-
-    ; No message (empty string) but rc=0 → nothing to do
-    If $msg = "" Then
-		Return
-	EndIf
-
-    ; Normal message handling
-    if $cdp.config.debug = True then ConsoleWrite("RECV: " & $msg & @CRLF)
-
-    Local $msgObj = _JsonC_TokenerParse($msg)
-    If $msgObj = 0 Then
-		Return
-	EndIf
-
-    Local $msgIdObj = _JsonC_ObjectObjectGet($msgObj, "id")
-    Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
-
-    Local $msgId = ""
-    Local $msgMethod = ""
-
-    If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
-    If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
-
-    ; -------------------------
-    ; 1. RESPONSE (has "id")
-    ; -------------------------
-    If $msgId <> "" Then
-        $cdp.state.pending.Item($msgId) = $msgObj
-        Return
-    EndIf
-
-    ; -------------------------
-    ; 2. EVENT (has "method")
-    ; -------------------------
-    If $msgMethod <> "" Then
-        If $cdp.state.events.Exists($msgMethod) Then
-            ; Call the event handler
-            Call($cdp.state.events.Item($msgMethod), $msgObj)
+		; rc = 56 (CURLE_RECV_ERROR) means connection closed
+		If $rc = 56 Then
+			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
+			__CDP_RemoveBrowserState($wsHandle)
+			ContinueLoop
 		EndIf
-		If $msgMethod = "Inspector.detached" Then
-			__CDP_Internal_Reset()
-		EndIf
-        Return
-    EndIf
 
+		; Any other non-zero rc is a real error
+		If $rc <> 0 Then
+			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
+			__CDP_RemoveBrowserState($wsHandle)
+			ContinueLoop
+		EndIf
+
+		; No message (empty string) but rc=0 → nothing to do
+		If $msg = "" Then ContinueLoop
+
+		; Normal message handling
+		if $cdp.config.debug = True then ConsoleWrite("RECV: " & $msg & @CRLF)
+
+		Local $msgObj = _JsonC_TokenerParse($msg)
+		If $msgObj = 0 Then ContinueLoop
+
+		Local $msgIdObj = _JsonC_ObjectObjectGet($msgObj, "id")
+		Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
+
+		Local $msgId = ""
+		Local $msgMethod = ""
+
+		If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
+		If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
+
+		; -------------------------
+		; 1. RESPONSE (has "id")
+		; -------------------------
+		If $msgId <> "" Then
+			$oState.Item("pending").Item($msgId) = $msgObj
+			ContinueLoop
+		EndIf
+
+		; -------------------------
+		; 2. EVENT (has "method")
+		; -------------------------
+		If $msgMethod <> "" Then
+			If $cdp.state.events.Exists($msgMethod) Then
+				; Call the event handler
+				Call($cdp.state.events.Item($msgMethod), $wsHandle, $msgObj)
+			EndIf
+
+			If $msgMethod = "Inspector.detached" Then
+				__CDP_RemoveBrowserState($wsHandle)
+			EndIf
+			ContinueLoop
+		EndIf
+	Next
 EndFunc
+
+Func __CDP_RemoveBrowserState($wsKey)
+    ; Remove this browser's CDP state
+    If $g_CDP_Browsers.Exists($wsKey) Then
+        $g_CDP_Browsers.Remove($wsKey)
+		if $cdp.config.debug = True Then ConsoleWrite("DEBUG: Browser closed. Browsers remaining = " & $g_CDP_Browsers.Count & @CRLF)
+    EndIf
+
+    ; If no browsers remain, stop the recv loop
+    If $g_CDP_Browsers.Count = 0 Then
+        AdlibUnRegister("_CDP_RecvLoop")
+		if $cdp.config.debug = True Then ConsoleWrite("DEBUG: _CDP_RecvLoop unregistered" & @CRLF)
+    EndIf
+EndFunc
+
 
 Func _CDP_NewParams()
     Return ObjCreate("Scripting.Dictionary")
 EndFunc
 
-Func _CDP_WaitForLoad($timeout = 5000)
-    $cdp.state.pageLoaded = False
+Func _CDP_WaitForLoad($oContext, $timeout = 5000)
 
+    ; Resolve wsKey from browser or page
+    Local $wsKey = String($oContext.wsHandle)
+    If Not $g_CDP_Browsers.Exists($wsKey) Then Return False
+
+    Local $oState = $g_CDP_Browsers.Item($wsKey)
+
+    ; Reset load flag
+    $oState.Item("pageLoaded") = False
+
+    ; Wait for load event
     Local $t = TimerInit()
-    While Not $cdp.state.pageLoaded
+    While Not $oState.Item("pageLoaded")
         If TimerDiff($t) > $timeout Then Return False
         Sleep(10)
     WEnd
@@ -230,18 +266,21 @@ Func _CDP_WaitForLoad($timeout = 5000)
     Return True
 EndFunc
 
-Func _CDP_Evaluate($sExpression)
+Func _CDP_Evaluate($oContext, $sExpression)
     Local $oParams = _CDP_NewParams()
     $oParams.Add("expression", $sExpression)
     ;$oParams.Add("returnByValue", True)
 
-    Return _CDP_SendSync("Runtime.evaluate", $oParams)
+    Return _CDP_SendSync($oContext, "Runtime.evaluate", $oParams)
 EndFunc
 
-Func _OnPageLoad($params)
-    ;ConsoleWrite("Page loaded event fired" & @CRLF)
-    $cdp.state.pageLoaded = True
+Func _OnPageLoad($wsKey, $msgObj)
+	If Not $g_CDP_Browsers.Exists($wsKey) Then Return
+    Local $oState = $g_CDP_Browsers.Item($wsKey)
+    ; Mark this browser as having fired a load event
+    $oState.Item("pageLoaded") = True
 EndFunc
+
 
 #endregion
 
@@ -255,7 +294,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 
 	if $browser = Default Then $browser = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
 	if $port = Default Then $port = 9222
-	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking --enable-automation"
+	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking --enable-automation --silent-launch"
 	if $profile = Default Then $profile = @ScriptDir & "\chromeprofile"
 	if $windowSize <> Default Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
 
@@ -276,18 +315,28 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	;	to simplify detection of the correct websocket
 	DirRemove($profile & "\Default\Sessions", 1)
 
-	ConsoleWrite('> Info : Running ' & $browser & ' ' & $startupSwitches & @CRLF)
 	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
 	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
+	ConsoleWrite('> Info : Running ' & $cmd & @CRLF)
     Run($cmd)
 
 	if $cdp.config.infoPopups = True Then SplashOff()
 
     Sleep(500) ; give Chrome time to start
 
-	$cdp.state.activeBrowserWs = __CDP_Browser_Connect($port)
-	ConsoleWrite('> Info : Browser WebSocket Handle: ' & $cdp.state.activeBrowserWs & @CRLF)
+	if $g_CDP_Browsers.Count = 0 Then
+		AdlibRegister("_CDP_RecvLoop", 5)
+		if $cdp.config.debug = True Then ConsoleWrite("DEBUG: _CDP_RecvLoop registered" & @CRLF)
+	EndIf
 
+	Local $wsHandle = Number(__CDP_Browser_Connect($port))
+
+    Local $oState = ObjCreate("Scripting.Dictionary")
+    $oState.Add("pending", ObjCreate("Scripting.Dictionary"))
+    $oState.Add("nextId",  1)
+    $oState.Add("pageLoaded", False)
+
+	$g_CDP_Browsers.Add(String($wsHandle), $oState)
 
     ; Create Browser object
 
@@ -295,19 +344,55 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 
     ; Add methods
 
-    _AutoItObject_AddMethod($oBrowser, "page", "_CDP_Browser_NewPage")
-    _AutoItObject_AddMethod($oBrowser, "headlessShell", "_CDP_Browser_NewHeadlessShell")
+    _AutoItObject_AddMethod($oBrowser, "newPage", "_CDP_Browser_NewPage")
+    ;_AutoItObject_AddMethod($oBrowser, "headlessShell", "_CDP_Browser_NewHeadlessShell")
     _AutoItObject_AddMethod($oBrowser, "close", "_CDP_Browser_Close")
 
     ; Add properties
 
+    _AutoItObject_AddProperty($oBrowser, "type", $ELSCOPE_READONLY, $CDP_BROWSER)
     ;_AutoItObject_AddProperty($oBrowser, "wsUrl", $ELSCOPE_PUBLIC, $browserWsUrl)
     _AutoItObject_AddProperty($oBrowser, "wsPort", $ELSCOPE_PUBLIC, $port)
-    _AutoItObject_AddProperty($oBrowser, "wsHandle", $ELSCOPE_PUBLIC, $cdp.state.activeBrowserWs)
+    _AutoItObject_AddProperty($oBrowser, "wsHandle", $ELSCOPE_PUBLIC, $wsHandle)
+
+	; Remove the default "New Tab"
+
+	Local $defaultTargetId = _CDP_Browser_GetDefaultTabTargetId($oBrowser)
+
+	If $defaultTargetId <> Null Then
+		Local $oParams = _CDP_NewParams()
+		$oParams.Add("targetId", $defaultTargetId)
+		_CDP_SendSync($oBrowser, "Target.closeTarget", $oParams)
+	EndIf
 
     Return $oBrowser
 EndFunc
 
+
+Func _CDP_Browser_GetDefaultTabTargetId($oSelf)
+    Local $resp = _CDP_SendSync($oSelf, "Target.getTargets")
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $targetInfosObj = _JsonC_ObjectObjectGet($resultObj, "targetInfos")
+	Local $targetInfos = _JsonC_ObjectArrayGetObjects($targetInfosObj)
+
+	For $targetInfo in $targetInfos
+		Local $typeObj = _JsonC_ObjectObjectGet($targetInfo, "type")
+		Local $typeVal = _JsonC_ObjectGetValue($typeObj)
+        If $typeVal = "page" Then
+			Local $urlObj = _JsonC_ObjectObjectGet($targetInfo, "url")
+			Local $urlVal = _JsonC_ObjectGetValue($urlObj)
+			If $urlVal = "chrome://newtab/" Or $urlVal = "about:blank" Then
+				Local $targetIdObj = _JsonC_ObjectObjectGet($targetInfo, "targetId")
+				Local $targetIdVal = _JsonC_ObjectGetValue($targetIdObj)
+				Return $targetIdVal
+			EndIf
+		EndIf
+	Next
+
+    Return Null
+EndFunc
+
+#cs
 Func _CDP_Browser_Attach($oSelf, $port = 9222)
 
 	; Connect to CDP
@@ -331,6 +416,7 @@ Func _CDP_Browser_Attach($oSelf, $port = 9222)
 
     Return $oBrowser
 EndFunc
+#ce
 
 Func __CDP_Browser_Connect($port)
 
@@ -357,30 +443,26 @@ EndFunc
 
 Func _CDP_Browser_NewPage($oSelf)
 
-	; Get the page level websocket
+	; create a target
 
-	Local $resp = Curl_Get("http://localhost:" & $oSelf.wsPort & "/json")
-	Local $pattern = '(?s)"title"\s*:\s*"New Tab".+?"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
-	Local $matches = StringRegExp($resp, $pattern, 1)
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("url", "about:blank")
+    Local $resp = _CDP_SendSync($oSelf, "Target.createTarget", $oParams)
 
-	If @error Then
-		ConsoleWrite("No page WebSocket found" & @CRLF)
-		Return
-	EndIf
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $targetIdObj = _JsonC_ObjectObjectGet($resultObj, "targetId")
+    Local $targetIdVal = _JsonC_ObjectGetValue($targetIdObj)
 
-	Local $pageWsUrl = $matches[0]
-	ConsoleWrite('> Info : Page WebSocket Url: ' & $pageWsUrl & @CRLF)
+	; attach to the target
 
-	; 1. Connect to the page level websocket
+    Local $oParams = _CDP_NewParams()
+    $oParams.Add("targetId", $targetIdVal)
+    $oParams.Add("flatten", True)
+    Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", $oParams)
 
-	$cdp.state.activePageWs = _CDP_Connect($pageWsUrl)
-	ConsoleWrite('> Info : Page WebSocket Handle: ' & $cdp.state.activePageWs & @CRLF)
-
-    ; 3. Enable core domains
-
-    _CDP_SendSync("DOM.enable")
-    _CDP_SendSync("Page.enable")
-    _CDP_SendSync("Runtime.enable")
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $sessionIdObj = _JsonC_ObjectObjectGet($resultObj, "sessionId")
+    Local $sessionIdVal = _JsonC_ObjectGetValue($sessionIdObj)
 
     ; Create Page object
 
@@ -402,14 +484,22 @@ Func _CDP_Browser_NewPage($oSelf)
 
     ; Add properties
 
+    _AutoItObject_AddProperty($oPage, "type", $ELSCOPE_READONLY, $CDP_PAGE)
     ;_AutoItObject_AddProperty($oPage, "wsUrl", $ELSCOPE_PUBLIC, $pageWsUrl)
     _AutoItObject_AddProperty($oPage, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
-    _AutoItObject_AddProperty($oPage, "wsHandle", $ELSCOPE_PUBLIC, $cdp.state.activePageWs)
+    _AutoItObject_AddProperty($oPage, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
+    _AutoItObject_AddProperty($oPage, "sessionId", $ELSCOPE_PUBLIC, $sessionIdVal)
+
+    ; Enable core domains
+
+    _CDP_SendSync($oPage, "DOM.enable")
+    _CDP_SendSync($oPage, "Page.enable")
+    _CDP_SendSync($oPage, "Runtime.enable")
 
     Return $oPage
-
 EndFunc
 
+#cs
 Func _CDP_Browser_NewHeadlessShell($oSelf)
 
 	; connect the page level websocket to the browser level websocket
@@ -445,9 +535,9 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
 
     ; Enable core domains
 
-    _CDP_SendSync("DOM.enable")
-    _CDP_SendSync("Page.enable")
-    _CDP_SendSync("Runtime.enable")
+    _CDP_SendSync($oSelf, "DOM.enable")
+    _CDP_SendSync($oSelf, "Page.enable")
+    _CDP_SendSync($oSelf, "Runtime.enable")
 
     ; Create Page object
 
@@ -476,24 +566,19 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
     Return $oPage
 
 EndFunc
+#ce
 
 Func _CDP_Browser_Close($oSelf)
 
-    AdlibUnRegister("_CDP_RecvLoop")
-	Sleep(20)
-
-    _CDP_SendCommand("Browser.close")
+    _CDP_SendCommand($oSelf, "Browser.close")
 	Sleep(500)
-
-	__CDP_Internal_Reset()
-
-	AdlibRegister("_CDP_RecvLoop", 5)
-	Sleep(20)
+	__CDP_RemoveBrowserState(String($oSelf.wsHandle))
 
     Return $oSelf
 
 EndFunc
 
+#cs
 Func __CDP_Internal_Reset()
     $cdp.state.activeBrowserWs = Null
     $cdp.state.activePageWs = Null
@@ -503,6 +588,7 @@ Func __CDP_Internal_Reset()
     $cdp.state.pending.RemoveAll()
     $cdp.state.pageLoaded = False
 EndFunc
+#ce
 
 #endregion
 
@@ -513,15 +599,15 @@ Func _CDP_Page_Goto($oSelf, $url)
     Local $oParams = ObjCreate("Scripting.Dictionary")
     $oParams.Add("url", $url)
 
-    _CDP_SendCommand("Page.navigate", $oParams)
-	_CDP_WaitForLoad()
+    _CDP_SendCommand($oSelf, "Page.navigate", $oParams)
+	_CDP_WaitForLoad($oSelf)
 
     Return $oSelf
 EndFunc
 
 Func _CDP_Page_Evaluate($oSelf, $expression)
 
-	Local $evalObj = _CDP_Evaluate($expression)
+	Local $evalObj = _CDP_Evaluate($oSelf, $expression)
 	;_CDP_WaitForLoad()
 
     ; 2. Parse objectId
@@ -535,13 +621,13 @@ Func _CDP_Page_Evaluate($oSelf, $expression)
 
 EndFunc
 
-Func _CDP_Page_Url($self)
+Func _CDP_Page_Url($oSelf)
 
     Local $oParams = _CDP_NewParams()
     $oParams.Add("expression", "window.location.href")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.evaluate", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -552,13 +638,13 @@ Func _CDP_Page_Url($self)
 
 EndFunc
 
-Func _CDP_Page_Title($self)
+Func _CDP_Page_Title($oSelf)
 
     Local $oParams = _CDP_NewParams()
     $oParams.Add("expression", "document.title")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.evaluate", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -573,11 +659,11 @@ Func _CDP_Page_Content($self)
 	; todo
 EndFunc
 
-Func _CDP_Page_ViewportSize($self)
+Func _CDP_Page_ViewportSize($oSelf)
 
     Local $oParams = _CDP_NewParams()
 
-    Local $resp = _CDP_SendSync("Page.getLayoutMetrics", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Page.getLayoutMetrics", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $layoutViewportObj = _JsonC_ObjectObjectGet($resultObj, "layoutViewport")
@@ -638,13 +724,13 @@ Func __CDP_Perform_Search($selector)
 EndFunc
 
 
-Func __CDP_Object_To_Node($objectId)
+Func __CDP_Object_To_Node($oSelf)
 
 	for $i = 1 to 2
 
 		Local $oParams = _CDP_NewParams()
-		$oParams.Add("objectId", $objectId)
-		Local $resp = _CDP_SendSync("DOM.requestNode", $oParams)
+		$oParams.Add("objectId", $oSelf.objectId)
+		Local $resp = _CDP_SendSync($oSelf, "DOM.requestNode", $oParams)
 
 		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
 		Local $nodeIdObj = _JsonC_ObjectObjectGet($resultObj, "nodeId")
@@ -654,7 +740,7 @@ Func __CDP_Object_To_Node($objectId)
 
 		Local $oParams = _CDP_NewParams()
 		$oParams.Add("depth", -1)
-		_CDP_SendSync("DOM.getDocument", $oParams)
+		_CDP_SendSync($oSelf, "DOM.getDocument", $oParams)
 
 	Next
 EndFunc
@@ -697,7 +783,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
     Local $t = TimerInit()
     While TimerDiff($t) < $timeout
 
-		Local $resp = _CDP_Evaluate($expr)
+		Local $resp = _CDP_Evaluate($oSelf, $expr)
 
 		;$json_str = _JsonC_ObjectToJsonString($resp)
 		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $json_str = ' & $json_str & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
@@ -787,10 +873,12 @@ Func _CDP_Page_Locator($oSelf, $selector)
 
 			; Add properties
 
+			_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
 			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
 			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, Null)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
-
+			_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
+			_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
 
 			Return $oLocator
 		EndIf
@@ -834,7 +922,7 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
         $expr = "document.querySelector(`" & $selector & "`)"
     EndIf
 
-	Local $resp = _CDP_Evaluate($expr)
+	Local $resp = _CDP_Evaluate($oSelf, $expr)
 
 	; Parse objectId
 	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -933,16 +1021,16 @@ EndFunc
 
 #region --- Locator Class ---
 
-Func _CDP_Locator_Click($self, $waitForLoad = False)
+Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { this.click(); }")
     $oParams.Add("awaitPromise", False)
 
-    _CDP_SendCommand("Runtime.callFunctionOn", $oParams)
+    _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", $oParams)
 
-	if $waitForLoad = True Then _CDP_WaitForLoad()
+	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
 
 EndFunc
 
@@ -958,14 +1046,14 @@ Func _CDP_Locator_Tap($self)
 	; Todo
 EndFunc
 
-Func _CDP_Locator_Fill($self, $value)
+Func _CDP_Locator_Fill($oSelf, $value)
 
 	Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function(value) { this.value = value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); }")
     $oParams.Add("arguments", '[{"value":"' & $value & '"}]')
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
 EndFunc
 
@@ -1021,14 +1109,14 @@ Func _CDP_Locator_ScrollIntoViewIfNeeded($self)
 	; Todo
 EndFunc
 
-Func _CDP_Locator_TextContent($self)
+Func _CDP_Locator_TextContent($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.textContent; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -1040,14 +1128,14 @@ Func _CDP_Locator_TextContent($self)
 EndFunc
 
 
-Func _CDP_Locator_InnerText($self)
+Func _CDP_Locator_InnerText($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.innerText; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     ; Extract the "result.value"
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -1055,7 +1143,7 @@ Func _CDP_Locator_InnerText($self)
     Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
     Local $valueVal = _JsonC_ObjectGetValue($valueObj)
 
-	$self.value = $valueVal
+	$oSelf.value = $valueVal
 
 	Return $valueVal
 EndFunc
@@ -1075,14 +1163,14 @@ Func _CDP_Locator_InnerTextReplace($self, $searchString, $replaceString)
 	Return StringReplace($text, $searchString, $replaceString)
 EndFunc
 
-Func _CDP_Locator_InnerHTML($self)
+Func _CDP_Locator_InnerHTML($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.innerHTML; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     ; Extract the "result.value"
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -1094,14 +1182,14 @@ Func _CDP_Locator_InnerHTML($self)
 
 EndFunc
 
-Func _CDP_Locator_InputValue($self)
+Func _CDP_Locator_InputValue($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.value; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     ; Extract the "result.value"
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -1112,13 +1200,13 @@ Func _CDP_Locator_InputValue($self)
 	Return $valueVal
 EndFunc
 
-Func _CDP_Locator_GetAttribute($self, $name)
+Func _CDP_Locator_GetAttribute($oSelf, $name)
 
     Local $oParams = _CDP_NewParams()
-	$self.nodeId = __CDP_Object_To_Node($self.objectId)
-    $oParams.Add("nodeId", $self.nodeId)
+	$oSelf.nodeId = __CDP_Object_To_Node($oSelf)
+    $oParams.Add("nodeId", $oSelf.nodeId)
 
-    Local $resp = _CDP_SendSync("DOM.getAttributes", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "DOM.getAttributes", $oParams)
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $attributesObj = _JsonC_ObjectObjectGet($resultObj, "attributes")
 
@@ -1166,14 +1254,14 @@ Func _CDP_Locator_Count($self)
 	; Todo
 EndFunc
 
-Func __CDP_Locator_IsVisibleValue($objectId)
+Func __CDP_Locator_IsVisibleValue($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { const r = this.getBoundingClientRect(); return !!(r.width && r.height); }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     ; Extract the "result.value"
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
@@ -1183,24 +1271,24 @@ Func __CDP_Locator_IsVisibleValue($objectId)
 
 EndFunc
 
-Func _CDP_Locator_IsVisible($self)
-	$val = __CDP_Locator_IsVisibleValue($self.objectId) <> 0
+Func _CDP_Locator_IsVisible($oSelf)
+	$val = __CDP_Locator_IsVisibleValue($oSelf) <> 0
 	Return $val
 EndFunc
 
-Func _CDP_Locator_IsHidden($self)
-	$val = Not ( __CDP_Locator_IsVisibleValue($self.objectId) <> 0 )
+Func _CDP_Locator_IsHidden($oSelf)
+	$val = Not ( __CDP_Locator_IsVisibleValue($oSelf) <> 0 )
 	Return $val
 EndFunc
 
-Func __CDP_Locator_IsDisabledValue($objectId)
+Func __CDP_Locator_IsDisabledValue($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.disabled; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -1211,25 +1299,25 @@ Func __CDP_Locator_IsDisabledValue($objectId)
 
 EndFunc
 
-Func _CDP_Locator_IsEnabled($self)
-	Return Not __CDP_Locator_IsDisabledValue($self.objectId)
+Func _CDP_Locator_IsEnabled($oSelf)
+	Return Not __CDP_Locator_IsDisabledValue($oSelf)
 EndFunc
 
-Func _CDP_Locator_IsDisabled($self)
-	Return __CDP_Locator_IsDisabledValue($self.objectId)
+Func _CDP_Locator_IsDisabled($oSelf)
+	Return __CDP_Locator_IsDisabledValue($oSelf)
 EndFunc
 
-Func _CDP_Locator_IsEditable($self)
+Func _CDP_Locator_IsEditable($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
 
     ; Playwright-equivalent logic:
     ; editable = !disabled && !readOnly
     $oParams.Add("functionDeclaration", "function() { return !this.disabled && !this.readOnly; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
@@ -1240,14 +1328,14 @@ Func _CDP_Locator_IsEditable($self)
 
 EndFunc
 
-Func _CDP_Locator_IsChecked($self)
+Func _CDP_Locator_IsChecked($oSelf)
 
     Local $oParams = _CDP_NewParams()
-    $oParams.Add("objectId", $self.objectId)
+    $oParams.Add("objectId", $oSelf.objectId)
     $oParams.Add("functionDeclaration", "function() { return this.checked; }")
     $oParams.Add("returnByValue", True)
 
-    Local $resp = _CDP_SendSync("Runtime.callFunctionOn", $oParams)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", $oParams)
 
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")

@@ -7,7 +7,7 @@
 
 $cdp.config.debug = True
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
-$page = $chrome.page()
+$page = $chrome.newPage()
 
 With test("Element Attributes test")
 
