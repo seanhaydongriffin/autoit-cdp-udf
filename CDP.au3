@@ -52,6 +52,7 @@ _AutoItObject_AddProperty($cdpConfig, "infoPopups", 		$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", 		$ELSCOPE_PUBLIC, False)
 
 Global $cdpBrowser = _AutoItObject_Create()
+_AutoItObject_AddMethod($cdpBrowser, "exists", 				"_CDP_Browser_Exists")
 _AutoItObject_AddMethod($cdpBrowser, "launch", 				"_CDP_Browser_Launch")
 _AutoItObject_AddMethod($cdpBrowser, "attach", 				"_CDP_Browser_Attach")
 
@@ -100,8 +101,8 @@ EndFunc
 
 Func _CDP_SendCommand($oContext, $sMethod, $oParams = Null)
 
-	If Not $g_CDP_Browsers.Exists(String($oContext.wsHandle)) Then Return SetError(2, 0, 0)
-	Local $oState = $g_CDP_Browsers.Item(String($oContext.wsHandle))
+	If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then Return SetError(2, 0, 0)
+	Local $oState = $g_CDP_Browsers.Item($oContext.wsPort)
 
 	; Allocate id
     Local $iId = $oState.Item("nextId")
@@ -125,15 +126,12 @@ EndFunc
 
 Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 2000)
 
-	; 1. Resolve wsHandle key (string)
-    Local $wsKey = String($oContext.wsHandle)
-
-    If Not $g_CDP_Browsers.Exists($wsKey) Then
+    If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then
         Return SetError(2, 0, Null)
     EndIf
 
     ; 2. Get per‑browser CDP state
-    Local $oState = $g_CDP_Browsers.Item($wsKey)
+    Local $oState = $g_CDP_Browsers.Item($oContext.wsPort)
 
 	; Send command → get ID
     Local $id = _CDP_SendCommand($oContext, $method, $params)
@@ -161,9 +159,9 @@ Func _CDP_RecvLoop()
 
 	For $i = 0 To UBound($keys) - 1
 
-		Local $wsHandle = $keys[$i]
-        Local $oState   = $g_CDP_Browsers.Item($wsHandle)
-		Local $msg = Curl_Ws_Recv($wsHandle)
+		Local $wsPort = $keys[$i]
+        Local $oState   = $g_CDP_Browsers.Item($wsPort)
+		Local $msg = Curl_Ws_Recv($oState.Item("wsHandle"))
 		Local $rc  = @extended
 
 		; rc = 81 (CURLE_AGAIN) means no data yet — totally normal
@@ -172,14 +170,14 @@ Func _CDP_RecvLoop()
 		; rc = 56 (CURLE_RECV_ERROR) means connection closed
 		If $rc = 56 Then
 			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
-			__CDP_RemoveBrowserState($wsHandle)
+			__CDP_RemoveBrowserState($wsPort)
 			ContinueLoop
 		EndIf
 
 		; Any other non-zero rc is a real error
 		If $rc <> 0 Then
 			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
-			__CDP_RemoveBrowserState($wsHandle)
+			__CDP_RemoveBrowserState($wsPort)
 			ContinueLoop
 		EndIf
 
@@ -215,11 +213,11 @@ Func _CDP_RecvLoop()
 		If $msgMethod <> "" Then
 			If $cdp.state.events.Exists($msgMethod) Then
 				; Call the event handler
-				Call($cdp.state.events.Item($msgMethod), $wsHandle, $msgObj)
+				Call($cdp.state.events.Item($msgMethod), $wsPort, $msgObj)
 			EndIf
 
 			If $msgMethod = "Inspector.detached" Then
-				__CDP_RemoveBrowserState($wsHandle)
+				__CDP_RemoveBrowserState($wsPort)
 			EndIf
 			ContinueLoop
 		EndIf
@@ -248,10 +246,10 @@ EndFunc
 Func _CDP_WaitForLoad($oContext, $timeout = 5000)
 
     ; Resolve wsKey from browser or page
-    Local $wsKey = String($oContext.wsHandle)
-    If Not $g_CDP_Browsers.Exists($wsKey) Then Return False
+    ;Local $wsKey = String($oContext.wsPort)
+    If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then Return False
 
-    Local $oState = $g_CDP_Browsers.Item($wsKey)
+    Local $oState = $g_CDP_Browsers.Item($oContext.wsPort)
 
     ; Reset load flag
     $oState.Item("pageLoaded") = False
@@ -287,6 +285,10 @@ EndFunc
 
 
 #region --- Browser Class ---
+
+Func _CDP_Browser_Exists($oSelf, $port)
+	Return $g_CDP_Browsers.Exists($port)
+EndFunc
 
 Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
 
@@ -332,11 +334,12 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	Local $wsHandle = Number(__CDP_Browser_Connect($port))
 
     Local $oState = ObjCreate("Scripting.Dictionary")
+    $oState.Add("wsHandle",  $wsHandle)
     $oState.Add("pending", ObjCreate("Scripting.Dictionary"))
     $oState.Add("nextId",  1)
     $oState.Add("pageLoaded", False)
 
-	$g_CDP_Browsers.Add(String($wsHandle), $oState)
+	$g_CDP_Browsers.Add($port, $oState)
 
     ; Create Browser object
 
@@ -594,13 +597,13 @@ EndFunc
 
 #region --- Page Class ---
 
-Func _CDP_Page_Goto($oSelf, $url)
+Func _CDP_Page_Goto($oSelf, $url, $waitForLoad = True)
 
     Local $oParams = ObjCreate("Scripting.Dictionary")
     $oParams.Add("url", $url)
 
     _CDP_SendCommand($oSelf, "Page.navigate", $oParams)
-	_CDP_WaitForLoad($oSelf)
+	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
 
     Return $oSelf
 EndFunc
@@ -879,6 +882,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 			_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
 			_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
+			_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
 
 			Return $oLocator
 		EndIf
