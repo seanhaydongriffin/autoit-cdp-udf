@@ -1819,58 +1819,6 @@ Func WaitForFile($path, $timeoutMs = 5000)
     Return True
 EndFunc
 
-Func __CDP_ParamsToJson($oDict)
-    Local $jObj = _JsonC_ObjectNewObject()
-
-    For $key In $oDict
-        Local $val = $oDict.Item($key)
-
-        ; AutoIt Boolean → JSON Boolean
-        If IsBool($val) Then
-            _JsonC_ObjectObjectAdd($jObj, $key, _JsonC_ObjectNewBoolean($val))
-            ContinueLoop
-        EndIf
-
-		; JSON array as a string
-		If StringLeft($val, 1) = "[" And StringRight($val, 1) = "]" Then
-            _JsonC_ObjectObjectAdd($jObj, $key, _JsonC_TokenerParse($val))
-            ContinueLoop
-		EndIf
-
-        ; AutoIt number → JSON number
-        Switch VarGetType($val)
-            Case "Int32", "Int64", "Double"
-                _JsonC_ObjectObjectAdd($jObj, $key, _JsonC_ObjectNewDouble($val))
-                ContinueLoop
-        EndSwitch
-
-        ; AutoIt array → JSON array
-        If IsArray($val) Then
-            Local $jArr = _JsonC_ObjectNewArray()
-            For $i = 0 To UBound($val) - 1
-                _JsonC_ObjectArrayAdd($jArr, _JsonC_ObjectNewString($val[$i]))
-            Next
-            _JsonC_ObjectObjectAdd($jObj, $key, $jArr)
-            ContinueLoop
-        EndIf
-
-        ; Raw JSON fragment (your old _CDP_JsonRaw)
-        If IsObj($val) And $val.Exists("raw") Then
-            ; Parse raw JSON into a json-c object
-            Local $parsed = _JsonC_TokenerParse($val.raw)
-            _JsonC_ObjectObjectAdd($jObj, $key, $parsed)
-            ContinueLoop
-        EndIf
-
-        ; Fallback: treat as string
-        _JsonC_ObjectObjectAdd($jObj, $key, _JsonC_ObjectNewString($val))
-    Next
-
-    ;Return _JsonC_ObjectToJsonString($jObj)
-    Return $jObj
-EndFunc
-
-
 Func __CDP_ResolveBrowserSpecifier($browser)
 
     ; Split "chrome@119" into ["chrome", "119"]
