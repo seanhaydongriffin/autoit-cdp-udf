@@ -46,7 +46,6 @@ With test("Number Inputs test")
 
 	EndWith
 
-
 EndWith
 
 $chrome.close()
