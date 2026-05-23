@@ -377,6 +377,8 @@ Global Const $CURLOPTTYPE_SLISTPOINT = $CURLOPTTYPE_OBJECTPOINT
 Global Const $CURLOPTTYPE_CBPOINT = $CURLOPTTYPE_OBJECTPOINT
 Global Const $CURLOPTTYPE_VALUES = $CURLOPTTYPE_LONG
 
+Global Const $CURLOPT_WS_OPTIONS = 286
+
 Global Enum _
 		$CURLOPT_WRITEDATA = $CURLOPTTYPE_OBJECTPOINT + 1, _
 		$CURLOPT_URL = $CURLOPTTYPE_OBJECTPOINT + 2, _
@@ -1560,7 +1562,7 @@ EndFunc   ;==>__Curl_FileReadCallback
 
 Func __Curl_DllOpen()
 	$g_hlibcurl = DllOpen('libcurl-x64.dll')
-	If $g_hlibcurl = -1 Then MsgBox(16, 'ERROR', 'Error opening libcurl-x64.dll')
+	;If $g_hlibcurl = -1 Then MsgBox(16, 'ERROR', 'Error opening libcurl-x64.dll')
 	OnAutoItExitRegister(__Curl_DllClose)
 EndFunc   ;==>__Curl_DllOpen
 

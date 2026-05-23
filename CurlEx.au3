@@ -5,12 +5,25 @@
 
 Global $CookieFile = "cookie.txt"
 
-Func Curl_Setopt_Websocket($Handle)
-	Return DllCall($g_hlibcurl, (@AutoItX64 ? "int" : "int:cdecl"), "curl_easy_setopt", "ptr", $Handle, "int", $CURLOPT_CONNECT_ONLY, "long", 2)[0]
+Func Curl_Setopt_Websocket($hCurl)
+    ; Required for WebSocket mode
+    Curl_Easy_Setopt($hCurl, $CURLOPT_CONNECT_ONLY, 2)
+
+    ; Enable WebSocket mode (required in libcurl 8.x)
+    Curl_Easy_Setopt($hCurl, $CURLOPT_WS_OPTIONS, 0)
+
+    ; Required WebSocket headers
+    Local $headers = Curl_Slist_Append(0, "Connection: Upgrade")
+    $headers = Curl_Slist_Append($headers, "Upgrade: websocket")
+    $headers = Curl_Slist_Append($headers, "Sec-WebSocket-Version: 13")
+    $headers = Curl_Slist_Append($headers, "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==")
+
+    Curl_Easy_Setopt($hCurl, $CURLOPT_HTTPHEADER, $headers)
 EndFunc
 
 Func Curl_Ws_Send($Handle, $Data)
-    $Data = Binary($Data)
+
+	$Data = StringToBinary($Data, 4) ; UTF-8
     Local $DataLen = BinaryLen($Data)
 
     Local $tBuffer = DllStructCreate("byte[" & $DataLen & "]")
@@ -39,33 +52,45 @@ Func Curl_Ws_Send($Handle, $Data)
     Return SetExtended($SentLen, $rc)
 EndFunc
 
-Func Curl_Ws_Recv($Handle, $iMax = 4096)
+Func Curl_Ws_Recv($Handle, $iMax, ByRef $tMeta)
     Local $tBuffer = DllStructCreate("byte[" & $iMax & "]")
     Local $nread   = 0
-    Local $pMeta   = 0
 
+    ; IMPORTANT: pass 0 for ptr*, read updated pointer from Ret[5]
     Local $Ret = DllCall($g_hlibcurl, (@AutoItX64 ? "int" : "int:cdecl"), "curl_ws_recv", _
         "ptr",       $Handle, _
-        "struct*",   $tBuffer, _
+        "ptr",       DllStructGetPtr($tBuffer), _
         "uint_ptr",  $iMax, _
         "uint_ptr*", $nread, _
-        "ptr*",      $pMeta)
+        "ptr*",      0)
 
     If @error Then Return SetError(1, @error, "")
 
-    Local $rc = $Ret[0]
+    Local $rc        = $Ret[0]
     Local $ReadBytes = $Ret[4]
+    Local $pMeta     = $Ret[5]   ; <-- THIS is the metadata pointer
+
+    ; Build struct if metadata exists
+    $tMeta = 0
+    If $pMeta <> 0 Then
+        $tMeta = DllStructCreate( _
+            "int age;" & _
+            "int flags;" & _
+            "int64 offset;" & _
+            "int64 bytesleft;" & _
+            (@AutoItX64 ? "uint64 len" : "uint len"), _
+            $pMeta)
+    EndIf
 
     If $rc <> 0 Or $ReadBytes = 0 Then Return SetExtended($rc, "")
 
     Local $bin = DllStructGetData($tBuffer, 1)
     $bin = BinaryMid($bin, 1, $ReadBytes)
 
-	$tBuffer = 0
     Return SetExtended($rc, BinaryToString($bin))
 EndFunc
 
-Func Curl_Get($url, $username = "", $password = "")
+Func Curl_Get($url, $Slist = Null, $username = Null, $password = Null)
 	Local $Curl = Curl_Easy_Init()
 	If Not $Curl Then Return
 
@@ -76,8 +101,8 @@ Func Curl_Get($url, $username = "", $password = "")
 
 	Curl_Easy_Setopt ( $Curl, $CURLOPT_ACCEPT_ENCODING, 'gzip, deflate, br, zstd' ) ; Possible values : '', 'identity', 'deflate' or 'gzip'
 
-	Curl_Easy_Setopt($Curl, $CURLOPT_USERNAME, $username)
-	Curl_Easy_Setopt($Curl, $CURLOPT_PASSWORD, $password)
+	if $username <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_USERNAME, $username)
+	if $password <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_PASSWORD, $password)
 
 	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEDATA, $Html)
@@ -85,6 +110,7 @@ Func Curl_Get($url, $username = "", $password = "")
 	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEFILE, $CookieFile)
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
+	if $Slist <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
 	Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)
 
 	;peer verification
@@ -106,6 +132,7 @@ Func Curl_Get($url, $username = "", $password = "")
 
 	return $response
 EndFunc
+
 
 Func Curl_Post($url, $Slist, $Post, $username = "", $password = "")
 	Local $Curl = Curl_Easy_Init()

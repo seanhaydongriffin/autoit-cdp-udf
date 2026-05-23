@@ -20,6 +20,7 @@ FileInstall(".\selenium-manager.exe", ".\")
 #include <StringConstants.au3>
 #include <Array.au3>
 #include <String.au3>
+#include <WinAPIProc.au3>
 #include "CurlEx.au3"
 #include "JsonC.au3"
 #include "AutoItObject.au3"
@@ -54,6 +55,8 @@ Global $cdpBrowser = _AutoItObject_Create()
 _AutoItObject_AddMethod($cdpBrowser, "exists", 				"_CDP_Browser_Exists")
 _AutoItObject_AddMethod($cdpBrowser, "launch", 				"_CDP_Browser_Launch")
 _AutoItObject_AddMethod($cdpBrowser, "attach", 				"_CDP_Browser_Attach")
+_AutoItObject_AddMethod($cdpBrowser, "isRunning", 			"_CDP_Browser_IsRunning")
+_AutoItObject_AddMethod($cdpBrowser, "forceClose", 			"_CDP_Browser_ForceClose")
 
 Global $cdp = _AutoItObject_Create()
 _AutoItObject_AddProperty($cdp, "state", 					$ELSCOPE_PUBLIC, $cdpState)
@@ -120,7 +123,7 @@ Func _CDP_SendCommand($oContext, $sMethod, $oParams = Null)
     Return $iId
 EndFunc
 
-Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 2000)
+Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 10000)
 
     If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then Return SetError(2, 0, Null)
 
@@ -146,77 +149,122 @@ Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 2000)
     Return SetError(1, 0, Null)
 EndFunc
 
+
+
+
 Func _CDP_RecvLoop()
 
-	; Iterate all browser wsHandles
     Local $keys = $g_CDP_Browsers.Keys
 
-	For $i = 0 To UBound($keys) - 1
+    For $i = 0 To UBound($keys) - 1
 
-		Local $wsPort = $keys[$i]
-        Local $oState   = $g_CDP_Browsers.Item($wsPort)
-		Local $msg = Curl_Ws_Recv($oState.Item("wsHandle"))
-		Local $rc  = @extended
+        Local $wsPort = $keys[$i]
+        Local $oState = $g_CDP_Browsers.Item($wsPort)
+        Local $hWs    = $oState.Item("wsHandle")
 
-		; rc = 81 (CURLE_AGAIN) means no data yet — totally normal
-		If $rc = 81 Then ContinueLoop
+        ; -------------------------------
+        ; 1. Read full WebSocket frame
+        ; -------------------------------
+        Local $fullMsg = __CDP_ReadFullWsFrame($hWs)
+        If @error Then
+            ; rc=81 → no data
+            If @error = 81 Then ContinueLoop
 
-		; rc = 56 (CURLE_RECV_ERROR) means connection closed
-		If $rc = 56 Then
-			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
-			__CDP_RemoveBrowserState($wsPort)
-			ContinueLoop
-		EndIf
+            ; rc=56 → connection closed
+            If @error = 56 Then
+                If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
+                __CDP_RemoveBrowserState($wsPort)
+                ContinueLoop
+            EndIf
 
-		; Any other non-zero rc is a real error
-		If $rc <> 0 Then
-			if $cdp.config.debug = True Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & $rc & @CRLF)
-			__CDP_RemoveBrowserState($wsPort)
-			ContinueLoop
-		EndIf
+            ; Any other error
+            If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & @error & @CRLF)
+            __CDP_RemoveBrowserState($wsPort)
+            ContinueLoop
+        EndIf
 
-		; No message (empty string) but rc=0 → nothing to do
-		If $msg = "" Then ContinueLoop
+        ; No message
+        If $fullMsg = "" Then ContinueLoop
 
-		; Normal message handling
-		if $cdp.config.debug = True then ConsoleWrite("RECV: " & $msg & @CRLF)
+        ; Debug output
+        If $cdp.config.debug Then ConsoleWrite("RECV: " & $fullMsg & @CRLF)
 
-		Local $msgObj = _JsonC_TokenerParse($msg)
-		If $msgObj = 0 Then ContinueLoop
+        ; -------------------------------
+        ; 2. Parse JSON
+        ; -------------------------------
+        Local $msgObj = _JsonC_TokenerParse($fullMsg)
+        If $msgObj = 0 Then ContinueLoop
 
-		Local $msgIdObj = _JsonC_ObjectObjectGet($msgObj, "id")
-		Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
+        Local $msgIdObj     = _JsonC_ObjectObjectGet($msgObj, "id")
+        Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
 
-		Local $msgId = ""
-		Local $msgMethod = ""
+        Local $msgId = ""
+        Local $msgMethod = ""
 
-		If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
-		If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
+        If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
+        If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
 
-		; -------------------------
-		; 1. RESPONSE (has "id")
-		; -------------------------
-		If $msgId <> "" Then
-			$oState.Item("pending").Item($msgId) = $msgObj
-			ContinueLoop
-		EndIf
+        ; -------------------------
+        ; 3. RESPONSE (has "id")
+        ; -------------------------
+        If $msgId <> "" Then
+            $oState.Item("pending").Item($msgId) = $msgObj
+            ContinueLoop
+        EndIf
 
-		; -------------------------
-		; 2. EVENT (has "method")
-		; -------------------------
-		If $msgMethod <> "" Then
-			If $cdp.state.events.Exists($msgMethod) Then
-				; Call the event handler
-				Call($cdp.state.events.Item($msgMethod), $wsPort, $msgObj)
-			EndIf
+        ; -------------------------
+        ; 4. EVENT (has "method")
+        ; -------------------------
+        If $msgMethod <> "" Then
+            If $cdp.state.events.Exists($msgMethod) Then
+                Call($cdp.state.events.Item($msgMethod), $wsPort, $msgObj)
+            EndIf
 
-			If $msgMethod = "Inspector.detached" Then
-				__CDP_RemoveBrowserState($wsPort)
-			EndIf
-			ContinueLoop
-		EndIf
-	Next
+            If $msgMethod = "Inspector.detached" Then
+                __CDP_RemoveBrowserState($wsPort)
+            EndIf
+
+            ContinueLoop
+        EndIf
+
+    Next
 EndFunc
+
+
+Func __CDP_ReadFullWsFrame($hWs)
+    Local $buffer = ""
+    Local $tMeta, $chunk, $rc
+
+    While True
+        $chunk = Curl_Ws_Recv($hWs, 65536, $tMeta)
+        $rc = @extended
+
+        ; No data yet
+        If $rc = 81 Then
+            If $buffer = "" Then Return SetError(81, 0, "")
+            ContinueLoop
+        EndIf
+
+        ; Connection closed
+        If $rc = 56 Then Return SetError(56, 0, "")
+
+        ; Any other error
+        If $rc <> 0 Then Return SetError($rc, 0, "")
+
+        ; Append chunk
+        If $chunk <> "" Then $buffer &= $chunk
+
+        ; If no metadata, assume frame complete (defensive)
+        If Not IsDllStruct($tMeta) Then ExitLoop
+
+        ; bytesleft == 0 → final fragment
+        Local $bytesleft = DllStructGetData($tMeta, "bytesleft")
+        If $bytesleft = 0 Then ExitLoop
+    WEnd
+
+    Return $buffer
+EndFunc
+
 
 Func __CDP_RemoveBrowserState($wsKey)
     ; Remove this browser's CDP state
@@ -279,11 +327,47 @@ EndFunc
 
 #region --- Browser Class ---
 
+Func _CDP_Browser_IsRunning($oSelf, $port)
+    Local $oHTTP = ObjCreate("WinHttp.WinHttpRequest.5.1")
+    If @error Then Return False
+
+    Local $url = "http://localhost:" & $port & "/json/version"
+
+    ; Attempt the GET request
+    $oHTTP.Open("GET", $url, False)
+    If @error Then Return False
+
+    $oHTTP.Send()
+    If @error Then Return False
+
+    ; If we got here, Chrome responded
+    Return True
+EndFunc
+
+Func _CDP_Browser_ForceClose($oSelf, $port)
+    ;If Not $oSelf.isRunning($port) Then Return False
+
+    Local $sPort = "--remote-debugging-port=" & $port
+    Local $aList = ProcessList("chrome.exe")
+
+    For $i = 1 To $aList[0][0]
+        Local $pid = $aList[$i][1]
+        Local $cmd = _WinAPI_GetProcessCommandLine($pid)
+
+        If StringInStr($cmd, $sPort) Then
+            ProcessClose($pid)
+            Return True
+        EndIf
+    Next
+
+    Return False
+EndFunc
+
 Func _CDP_Browser_Exists($oSelf, $port)
 	Return $g_CDP_Browsers.Exists($port)
 EndFunc
 
-Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default)
+Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default, $clearCookies = False)
 
 	if $cdp.config.infoPopups = True Then SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
 
@@ -292,6 +376,9 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking --enable-automation --silent-launch"
 	if $profile = Default Then $profile = @ScriptDir & "\chromeprofile"
 	if $windowSize <> Default Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
+
+	; force close any browser instances already on this port
+	$cdp.browser.forceClose($port)
 
     If IsString($browser) And StringInStr($browser, "@") > 0 Then
 		; it's a browser specifier
@@ -309,6 +396,13 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	; always delete previous sessions in the user profile
 	;	to simplify detection of the correct websocket
 	DirRemove($profile & "\Default\Sessions", 1)
+
+	if $clearCookies = True Then
+		FileDelete($profile & "\Default\Cookies")
+		FileDelete($profile & "\Default\Cookies-journal")
+		FileDelete($profile & "\Default\Network\Cookies")
+		FileDelete($profile & "\Default\Network\Cookies-journal")
+	EndIf
 
 	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
 	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
@@ -652,8 +746,20 @@ Func _CDP_Page_Title($oSelf)
 
 EndFunc
 
-Func _CDP_Page_Content($self)
-	; todo
+Func _CDP_Page_Content($oSelf)
+
+    Local $oParams = _JsonC_ObjectNewObject()
+	_JsonC_ObjectObjectAdd($oParams, "expression", _JsonC_ObjectNewString("document.documentElement.outerHTML"))
+	_JsonC_ObjectObjectAdd($oParams, "returnByValue", _JsonC_ObjectNewBoolean(True))
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", $oParams)
+
+    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
+    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
+    Local $valueVal = _JsonC_ObjectGetString($valueObj)
+
+    Return $valueVal
+
 EndFunc
 
 Func _CDP_Page_ViewportSize($oSelf)
@@ -715,11 +821,14 @@ EndFunc
 
 Func __CDP_Object_To_Node($oSelf)
 
+
 	for $i = 1 to 2
 
+		;Local $hStarttime = TimerInit()
 		Local $oParams = _JsonC_ObjectNewObject()
 		_JsonC_ObjectObjectAdd($oParams, "objectId", _JsonC_ObjectNewString($oSelf.objectId))
 		Local $resp = _CDP_SendSync($oSelf, "DOM.requestNode", $oParams)
+		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 
 		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
 		Local $nodeIdObj = _JsonC_ObjectObjectGet($resultObj, "nodeId")
@@ -727,12 +836,78 @@ Func __CDP_Object_To_Node($oSelf)
 
 		if $nodeIdVal <> 0 Then Return $nodeIdVal
 
+		;Local $hStarttime = TimerInit()
 		Local $oParams = _JsonC_ObjectNewObject()
-		_JsonC_ObjectObjectAdd($oParams, "depth", _JsonC_ObjectNewInt(-1))
+		_JsonC_ObjectObjectAdd($oParams, "depth", _JsonC_ObjectNewInt(0))
 		_CDP_SendSync($oSelf, "DOM.getDocument", $oParams)
+		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 
 	Next
+
+
 EndFunc
+
+
+Func __CDP_Object_To_Node2($oSelf)
+
+	for $i = 1 to 2
+
+		if $i = 1 Then
+			Local $hStarttime = TimerInit()
+			Local $oParams = _JsonC_ObjectNewObject()
+			_JsonC_ObjectObjectAdd($oParams, "objectId", _JsonC_ObjectNewString($oSelf.objectId))
+			Local $resp = _CDP_SendSync($oSelf, "DOM.describeNode", $oParams)
+			ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+			Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+			Local $nodeObj = _JsonC_ObjectObjectGet($resultObj, "node")
+			Local $backendNodeIdObj = _JsonC_ObjectObjectGet($nodeObj, "backendNodeId")
+			Local $backendNodeIdVal = _JsonC_ObjectGetValue($backendNodeIdObj)
+		Else
+
+			Local $hStarttime = TimerInit()
+			Local $oParams = _JsonC_ObjectNewObject()
+			_JsonC_ObjectObjectAdd($oParams, "depth", _JsonC_ObjectNewInt(0))
+			_CDP_SendSync($oSelf, "DOM.getDocument", $oParams)
+			ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+		EndIf
+
+		Local $hStarttime = TimerInit()
+		Local $oParams = _JsonC_ObjectNewObject()
+		$oValue = _JsonC_ObjectNewObject()
+		_JsonC_ObjectObjectAdd($oValue, "value", _JsonC_ObjectNewInt($backendNodeIdVal))
+		$oBackendNodeIds = _JsonC_ObjectNewArray()
+		_JsonC_ObjectArrayAdd($oBackendNodeIds, _JsonC_ObjectNewInt($backendNodeIdVal))
+		_JsonC_ObjectObjectAdd($oParams, "backendNodeIds", $oBackendNodeIds)
+		Local $resp = _CDP_SendSync($oSelf, "DOM.pushNodesByBackendIdsToFrontend", $oParams)
+		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+		if _JsonC_ObjectIsType($resultObj, $JSONC_TYPE_NULL) = 1 Then ContinueLoop
+
+		Local $nodeIdsObj = _JsonC_ObjectObjectGet($resultObj, "nodeIds")
+		$nodeIds = _JsonC_ObjectArrayGetObjects($nodeIdsObj)
+		Local $nodeIdVal
+
+		For $nodeId in $nodeIds
+			$nodeIdVal = _JsonC_ObjectGetValue($nodeId)
+			ExitLoop
+		Next
+
+		if $nodeIdVal <> 0 Then Return $nodeIdVal
+
+	Next
+
+	Return 0
+
+EndFunc
+
+
+; "DOM.requestNode" the slowest - often also requires "DOM.getDocument" - about 170ms
+; "DOM.describeNode" is fast but produces a backendNodeId not a nodeId
+;	can pass this backendNodeId into "DOM.pushNodesByBackendIdsToFrontend" - it is slow about 175ms
+
+
 
 
 Func _CDP_Page_Locator($oSelf, $selector)
@@ -863,12 +1038,18 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			; Add properties
 
 			_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
-			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
-			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, Null)
-			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 			_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
 			_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
 			_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
+			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
+
+			Local $hTimer = TimerInit()
+			Local $nodeIdVal = __CDP_Object_To_Node($oLocator)
+			;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hTimer) = ' & TimerDiff($hTimer) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+			;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $nodeIdVal = ' & $nodeIdVal & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, $nodeIdVal)
+			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
 			Return $oLocator
 		EndIf
@@ -1027,8 +1208,49 @@ Func _CDP_Locator_DoubleClick($self, $waitForLoad = False)
 	; Todo
 EndFunc
 
-Func _CDP_Locator_Hover($self)
-	; Todo
+Func _CDP_Locator_Hover($oSelf)
+
+    ; 3. Get box model
+    Local $oParams = _JsonC_ObjectNewObject()
+	_JsonC_ObjectObjectAdd($oParams, "nodeId", _JsonC_ObjectNewInt($oSelf.nodeId))
+    Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", $oParams)
+
+	if $resp = Null Then Return SetError(2, 0, "No box model")
+
+	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
+	Local $modelObj = _JsonC_ObjectObjectGet($resultObj, "model")
+	Local $contentObj = _JsonC_ObjectObjectGet($modelObj, "content")
+	$content = _JsonC_ObjectArrayGetObjects($contentObj)
+
+	Local $left, $right, $top, $bottom, $loop_num = 0
+	For $eachContent in $content
+		$eachVal = _JsonC_ObjectGetValue($eachContent)
+		$loop_num = $loop_num + 1
+		Switch $loop_num
+			Case 1
+				$left = $eachVal
+			Case 2
+				$top = $eachVal
+			Case 5
+				$right = $eachVal
+			Case 6
+				$bottom = $eachVal
+		EndSwitch
+	Next
+
+    ; 4. Compute center point
+    Local $cx = ($left + $right) / 2
+    Local $cy = ($top + $bottom) / 2
+
+    ; 5. Dispatch mouseMoved event
+	Local $oParams = _JsonC_ObjectNewObject()
+	_JsonC_ObjectObjectAdd($oParams, "type", _JsonC_ObjectNewString("mouseMoved"))
+	_JsonC_ObjectObjectAdd($oParams, "x", _JsonC_ObjectNewInt($cx))
+	_JsonC_ObjectObjectAdd($oParams, "y", _JsonC_ObjectNewInt($cy))
+    Local $resp = _CDP_SendSync($oSelf, "Input.dispatchMouseEvent", $oParams)
+
+    Return True
+
 EndFunc
 
 Func _CDP_Locator_Tap($self)
