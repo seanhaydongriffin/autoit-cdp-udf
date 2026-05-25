@@ -23,6 +23,12 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='button-input-key-value']")).toHaveText("", @ScriptLineNumber)
 		EndWith
 
+		$page.locator("//input[@id='button-input']").scrollIntoView().hover()
+
+		With teststep("State after hover")
+			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+		EndWith
+
 		$page.locator("//input[@id='button-input']").click()
 
 		With teststep("State after click")
@@ -44,6 +50,12 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("initiated", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-key-value']")).toHaveText("", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-checked-value']")).toHaveText("false", @ScriptLineNumber)
+		EndWith
+
+		$page.locator("//input[@id='checkbox-input']").scrollIntoView().hover()
+
+		With teststep("State after hover")
+			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 		EndWith
 
 		$page.locator("//input[@id='checkbox-input']").click()
@@ -72,6 +84,12 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-1-checked-value']")).toHaveText("false", @ScriptLineNumber)
 			EndWith
 
+			$page.locator("//input[@id='radio-input-1']").scrollIntoView().hover()
+
+			With teststep("State after hover")
+				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+			EndWith
+
 			$page.locator("//input[@id='radio-input-1']").click()
 
 			With teststep("State after click")
@@ -94,6 +112,12 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("initiated", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-2-key-value']")).toHaveText("", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-2-checked-value']")).toHaveText("false", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-2']").scrollIntoView().hover()
+
+			With teststep("State after hover")
+				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 			EndWith
 
 			$page.locator("//input[@id='radio-input-2']").click()
