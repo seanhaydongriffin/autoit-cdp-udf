@@ -321,7 +321,7 @@ Func _CDP_WaitForLoad($oContext, $timeout = 5000)
         Sleep(10)
     WEnd
 
-    Return True
+    Return $oContext
 EndFunc
 
 
