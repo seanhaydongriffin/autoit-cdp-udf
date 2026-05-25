@@ -145,7 +145,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | --- | --- | --- | --- |
 | ``click()`` | ✔️¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
 | ``dblclick()`` | ❌ | ✔️ | same as click (twice) |
-| ``hover()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
+| ``hover()`` | ✔️ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``tap()`` | ❌ | ✔️ | Input.dispatchTouchEvent |
 | ``fill()`` | ✔️ | ✔️ | DOM.focus<br>Input.insertText<br>Runtime.callFunctionOn |
 | ``type()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
@@ -160,6 +160,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``dragTo()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``setInputFiles()`` | ❌ | ✔️ | DOM.setFileInputFiles |
 | ``dispatchEvent()`` | ❌ | ✔️ | DOM.dispatchEvent |
+| ``scrollIntoView()`` | ✔️ | ✔️ | DOM.scrollIntoView<br>Runtime.callFunctionOn |
 | ``scrollIntoViewIfNeeded()`` | ❌ | ✔️ | DOM.scrollIntoViewIfNeeded<br>Runtime.callFunctionOn |
 
 ¹ partially done
