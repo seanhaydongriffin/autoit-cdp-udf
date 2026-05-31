@@ -26,19 +26,19 @@ Func BasicWebPageTest($chrome, $page)
 
 			With teststep("Verify the main page")
 				$title = $page.locator("//head/title")
-				.expect($title).toHaveText("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
-				.expect($title.innerText()).toBe("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
-				.expect($title).toBeHidden(@ScriptLineNumber)
-				.expect($title.isVisible()).toBe(False, @ScriptLineNumber)
-				.expect($title.isHidden()).toBe(True, @ScriptLineNumber)
+				.expect($title, "title").toHaveText("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
+				.expect($title.innerText(), "title innerText").toBe("Software Testing Practice Pages, Apps, and Challenges", @ScriptLineNumber)
+				.expect($title, "title").toBeHidden(@ScriptLineNumber)
+				.expect($title.isVisible(), "title visible state").toBe(False, @ScriptLineNumber)
+				.expect($title.isHidden(), "title hidden state").toBe(True, @ScriptLineNumber)
 			EndWith
 
 			With teststep("Verify navigation to Pages")
 				$pages_link = $page.locator("xpath=//a[@href='/pages/']")
-				.expect($pages_link.textContent()).toBe("Pages", @ScriptLineNumber)
-				.expect($pages_link).toBeVisible(@ScriptLineNumber)
-				.expect($pages_link.isVisible()).toBeTruthy(@ScriptLineNumber)
-				.expect($pages_link.isHidden()).toBeFalsy(@ScriptLineNumber)
+				.expect($pages_link.textContent(), "Pages link text").toBe("Pages", @ScriptLineNumber)
+				.expect($pages_link, "Pages link").toBeVisible(@ScriptLineNumber)
+				.expect($pages_link.isVisible(), "Pages link visible state").toBeTruthy(@ScriptLineNumber)
+				.expect($pages_link.isHidden(), "Pages link hidden state").toBeFalsy(@ScriptLineNumber)
 			EndWith
 
 			With teststep("Navigate to Pages")
@@ -46,7 +46,7 @@ Func BasicWebPageTest($chrome, $page)
 			EndWith
 
 			With teststep("Verify navigation to Basics")
-				.expect($page.locator("//a[@href='/pages/basics/']/span").innerHTML()).toBe("Basics", @ScriptLineNumber)
+				.expect($page.locator("//a[@href='/pages/basics/']/span").innerHTML(), "the Basics link innerHTML").toBe("Basics", @ScriptLineNumber)
 			EndWith
 
 			With teststep("Navigate to Basic Web Page")
@@ -59,24 +59,24 @@ Func BasicWebPageTest($chrome, $page)
 		With teststep("Verify Basic Web Page")
 
 			With teststep("Page elements")
-				.expect($page.locator("css=header.article-meta")).toContainText("Elements", @ScriptLineNumber)
-				.expect($page.locator("css=header.article-meta").innerText()).toContain("Elements", @ScriptLineNumber)
-				.expect($page.locator("css=header.article-meta").innerText()).toMatch(".*Categor.*", @ScriptLineNumber)
-				.expect($page.locator("//p[@id='para1']").innerText()).toBe("A paragraph of text", @ScriptLineNumber)
-				.expect($page.locator("//p[@id='para2']").innerText()).toBe("Another paragraph of text", @ScriptLineNumber)
+				.expect($page.locator("css=header.article-meta"), "Header article meta").toContainText("Elements", @ScriptLineNumber)
+				.expect($page.locator("css=header.article-meta").innerText(), "Header article meta innerText").toContain("Elements", @ScriptLineNumber)
+				.expect($page.locator("css=header.article-meta").innerText(), "Header article meta innerText").toMatch(".*Categor.*", @ScriptLineNumber)
+				.expect($page.locator("//p[@id='para1']").innerText(), "Paragraph 1 innerText").toBe("A paragraph of text", @ScriptLineNumber)
+				.expect($page.locator("//p[@id='para2']").innerText(), "Paragraph 1 innerText").toBe("Another paragraph of text", @ScriptLineNumber)
 			EndWith
 
 			With teststep("Click Me functionality")
 				$page.locator("//button[@id='button1']").click()
-				.expect($page.locator("//p[@id='click-message']").innerText()).toBe("You clicked the button!", @ScriptLineNumber)
-				.expect($page.locator("//p[@id='click-message']").innerText()).toBeDefined(@ScriptLineNumber)
-				.expect($page.locator("//p[@id='click-message']").innerText()).toHaveLength(StringLen("You clicked the button!"), @ScriptLineNumber)
+				.expect($page.locator("//p[@id='click-message']").innerText(), "click message").toBe("You clicked the button!", @ScriptLineNumber)
+				.expect($page.locator("//p[@id='click-message']").innerText(), "click message").toBeDefined(@ScriptLineNumber)
+				.expect($page.locator("//p[@id='click-message']").innerText(), "click message").toHaveLength(StringLen("You clicked the button!"), @ScriptLineNumber)
 			EndWith
 
 		EndWith
 
 		With teststep("Verify invalid locator")
-			.expect($page.locatorNow("//button[@id='invalid']")).toBeNull(@ScriptLineNumber)
+			.expect($page.locatorNow("//button[@id='invalid']"), "invalid locator").toBeNull(@ScriptLineNumber)
 		EndWith
 
 	EndWith

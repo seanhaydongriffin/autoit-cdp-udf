@@ -577,15 +577,13 @@ Func __CDP_Browser_Connect($port)
 	; Get the browser level websocket
 
 	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
-	Local $pattern = '(?s)"webSocketDebuggerUrl"\s*:\s*"([^"]+)"'
-	Local $matches = StringRegExp($resp, $pattern, 1)
+	Local $browserWsUrl = _JsonC_ObjectGetValue(_JsonC_ObjectObjectGet(_JsonC_ObjectObjectGet($resp, "body"), "webSocketDebuggerUrl"))
 
-	If @error Then
+	If $browserWsUrl = Null Then
 		ConsoleWrite("No browser WebSocket found" & @CRLF)
 		Return
 	EndIf
 
-	Local $browserWsUrl = $matches[0]
 	ConsoleWrite('> Info : Browser WebSocket Url: ' & $browserWsUrl & @CRLF)
 
 	; Connect to the browser level websocket
@@ -1960,7 +1958,7 @@ Func _CDP_Expect_Locator_ToBeVisible($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsVisible($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is visible", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be visible", $scriptLineNumber)
 		Return True
     EndIf
 	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not visible", $scriptLineNumber)
@@ -1972,10 +1970,10 @@ Func _CDP_Expect_Locator_ToBeHidden($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsHidden($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is hidden", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not hidden", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -2021,7 +2019,7 @@ Func _CDP_Expect_Locator_ToHaveText($oSelf, $expected, $scriptLineNumber = "")
 	;if $oSelf.text = "" Then $oSelf.text = ""
 	Local $actual = _CDP_Locator_TextContent($oSelf.subject)
 	If $actual = $expected Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "] and got [" & $actual & "]", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "]", $scriptLineNumber)
 		Return True
     EndIf
 	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to have [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
@@ -2157,7 +2155,13 @@ Func _CDP_Expect_Value_ToBeTruthy($oSelf, $line = "")
     Local $actual = $oSelf.subject
     ; AutoIt truthiness: anything non-zero is True
     Local $pass = ($actual <> 0)
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be truthy and got [" & $actual & "]", $line)
+
+	if $pass Then
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be truthy", $line)
+	Else
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be truthy and got [" & $actual & "]", $line)
+	EndIf
+
     Return $pass
 EndFunc
 
@@ -2165,7 +2169,13 @@ Func _CDP_Expect_Value_ToBeFalsy($oSelf, $line = "")
     Local $actual = $oSelf.subject
     ; AutoIt falsiness: only 0 is False
     Local $pass = ($actual = 0)
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be falsy and got [" & $actual & "]", $line)
+
+	if $pass Then
+	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be falsy", $line)
+	Else
+	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be falsy and got [" & $actual & "]", $line)
+	EndIf
+
     Return $pass
 EndFunc
 
@@ -2173,7 +2183,13 @@ Func _CDP_Expect_Value_ToBeNull($oSelf, $line = "")
     Local $actual = $oSelf.subject
     Local $pass = ($actual = Null)
 	if $actual = Null then $actual = "Null"
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be Null and got [" & $actual & "]", $line)
+
+	if $pass Then
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be Null", $line)
+	Else
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be Null but got [" & $actual & "]", $line)
+	EndIf
+
     Return $pass
 EndFunc
 
@@ -2182,7 +2198,13 @@ Func _CDP_Expect_Value_ToBeDefined($oSelf, $line = "?")
     Local $pass = Not ($actual = Default)
 	$actual = "defined"
 	if $pass = False then $actual = "undefined"
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be defined and got [" & $actual & "]", $line)
+
+	if $pass Then
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be defined", $line)
+	Else
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be defined and got [" & $actual & "]", $line)
+	EndIf
+
     Return $pass
 EndFunc
 
@@ -2229,7 +2251,13 @@ Func _CDP_Expect_Value_ToHaveLength($oSelf, $expected, $line = "")
     EndIf
 
     Local $pass = ($len = $expected)
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to have length [" & $expected & "] and got [" & $len & "]", $line)
+
+	if $pass Then
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to have length [" & $expected & "]", $line)
+	Else
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to have length [" & $expected & "] but got [" & $len & "]", $line)
+	EndIf
+
     Return $pass
 EndFunc
 
