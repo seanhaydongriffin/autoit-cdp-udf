@@ -24,6 +24,7 @@ FileInstall(".\selenium-manager.exe", ".\")
 #include "CurlEx.au3"
 #include "JsonC.au3"
 #include "AutoItObject.au3"
+#include "CSV.au3"
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 Global $CDP_DISABLE_ALIASES
@@ -31,6 +32,7 @@ Global Enum $CDP_BROWSER, $CDP_PAGE
 
 ; Global CDP registry: wsHandle → state object
 Global $g_CDP_Browsers = ObjCreate("Scripting.Dictionary")
+Global $g_CDP_TestEnv = ""
 
 $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error handler
 
@@ -38,6 +40,7 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 
 #region --- Initialization ---
 
+_CSV_Initialise()
 _JsonC_Startup("json-c.dll")
 _AutoItObject_Startup()
 
@@ -58,13 +61,22 @@ _AutoItObject_AddMethod($cdpBrowser, "attach", 				"_CDP_Browser_Attach")
 _AutoItObject_AddMethod($cdpBrowser, "isRunning", 			"_CDP_Browser_IsRunning")
 _AutoItObject_AddMethod($cdpBrowser, "forceClose", 			"_CDP_Browser_ForceClose")
 
+Global $cdpApi = _AutoItObject_Create()
+_AutoItObject_AddMethod($cdpApi, "get", 					"_CDP_Api_Get")
+_AutoItObject_AddMethod($cdpApi, "post", 					"_CDP_Api_Post")
+_AutoItObject_AddMethod($cdpApi, "put", 					"_CDP_Api_Put")
+_AutoItObject_AddMethod($cdpApi, "patch", 					"_CDP_Api_Patch")
+_AutoItObject_AddMethod($cdpApi, "delete", 					"_CDP_Api_Delete")
+
 Global $cdp = _AutoItObject_Create()
 _AutoItObject_AddProperty($cdp, "state", 					$ELSCOPE_PUBLIC, $cdpState)
 _AutoItObject_AddProperty($cdp, "config", 					$ELSCOPE_PUBLIC, $cdpConfig)
 _AutoItObject_AddProperty($cdp, "browser", 					$ELSCOPE_PUBLIC, $cdpBrowser)
+_AutoItObject_AddProperty($cdp, "api", 						$ELSCOPE_PUBLIC, $cdpApi)
 
 If Not IsDeclared("CDP_DISABLE_ALIASES") Or Not $CDP_DISABLE_ALIASES Then
     Global $browser = $cdp.browser
+    Global $api 	= $cdp.api
     Global $config  = $cdp.config
 EndIf
 
@@ -340,6 +352,48 @@ Func _OnPageLoad($wsKey, $msgObj)
     $oState.Item("pageLoaded") = True
 EndFunc
 
+
+#endregion
+
+
+#region --- API Class ---
+
+Func _CDP_Api_Get($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
+
+	Local $oHeaderList = Null, $sContentType = Null
+    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+
+	; call curl get
+	Local $response = Curl_Get($sUrl, $oHeaderList, $jOptions)
+	Return $response
+
+EndFunc
+
+Func _CDP_Api_Post($oSelf, $sUrl, $vPostData, $oHeaderData = Null, $jOptions = Null)
+
+	Local $oHeaderList = Null, $sContentType = Null
+    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+	If StringInStr($sContentType, "application/json") And IsString($vPostData) = False Then $vPostData = _JsonC_ObjectToJsonString($vPostData)
+
+	; call curl post
+	Local $response = Curl_Post($sUrl, $vPostData, $oHeaderList, $jOptions)
+	Return $response
+
+EndFunc
+
+Func _CDP_Api_Delete($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
+
+	Local $oHeaderList = Null, $sContentType = Null
+    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+
+	; call curl get
+	Local $response = Curl_Delete($sUrl, $oHeaderList, $jOptions)
+	Return $response
+
+EndFunc
 
 #endregion
 
@@ -733,6 +787,7 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _CDP_SendSync($oPage, "DOM.enable")
     _CDP_SendSync($oPage, "Page.enable")
     _CDP_SendSync($oPage, "Runtime.enable")
+    ;_CDP_SendSync($oPage, "Network.enable")
 
     Return $oPage
 
@@ -1788,10 +1843,39 @@ Func test($text)
     __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
+	; get the test environment from a release datapool if it exists
+	if FileExists(@ScriptDir & "\Data\Pools\Release.csv") Then $g_CDP_TestEnv = testdata("Release", "Test Environment")
+
 	Local $test = _AutoItObject_Create()
 	;_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddProperty($test, "environment", $ELSCOPE_READONLY, $g_CDP_TestEnv)
 	_AutoItObject_AddDestructor($test, "_CDP_Test_End")
 	Return $test
+
+EndFunc
+
+Func testdata($poolName, $recordKey, $testKey = "") ; $fieldName = Default, $keyColumnName = Default)
+
+	Local $csv_handle
+
+	if $poolName = "Environment" then 
+		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")	
+	EndIf
+
+	if $poolName = "Release" then 
+		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $poolName & ".csv")
+		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")	
+	EndIf
+
+	$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+	Return _CSV_Query($csv_handle, "SELECT * FROM csv WHERE ""Comment 1"" = '" & $recordKey & "' AND ""Assigned to"" = '" & $testKey & "'")	
+
+EndFunc
+
+Func _CDP_Test_Data_Get($oSelf, $sFieldName)
+ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $sFieldName = ' & $sFieldName & @CRLF & '>Error code: ' & @error & @CRLF)
+
 
 EndFunc
 

@@ -2,8 +2,64 @@
 #include-once
 
 #include "Curl.au3"
+#include "JsonC.au3"
 
 Global $CookieFile = "cookie.txt"
+
+Global $g_oCurlStatusText = ObjCreate("Scripting.Dictionary")
+$g_oCurlStatusText.Add(100, "Continue")
+$g_oCurlStatusText.Add(101, "Switching Protocols")
+$g_oCurlStatusText.Add(102, "Processing")
+$g_oCurlStatusText.Add(103, "Early Hints")
+$g_oCurlStatusText.Add(200, "OK")
+$g_oCurlStatusText.Add(201, "Created")
+$g_oCurlStatusText.Add(202, "Accepted")
+$g_oCurlStatusText.Add(203, "Non-Authoritative Information")
+$g_oCurlStatusText.Add(204, "No Content")
+$g_oCurlStatusText.Add(205, "Reset Content")
+$g_oCurlStatusText.Add(206, "Partial Content")
+$g_oCurlStatusText.Add(300, "Multiple Choices")
+$g_oCurlStatusText.Add(301, "Moved Permanently")
+$g_oCurlStatusText.Add(302, "Found")
+$g_oCurlStatusText.Add(303, "See Other")
+$g_oCurlStatusText.Add(304, "Not Modified")
+$g_oCurlStatusText.Add(307, "Temporary Redirect")
+$g_oCurlStatusText.Add(308, "Permanent Redirect")
+$g_oCurlStatusText.Add(400, "Bad Request")
+$g_oCurlStatusText.Add(401, "Unauthorized")
+$g_oCurlStatusText.Add(402, "Payment Required")
+$g_oCurlStatusText.Add(403, "Forbidden")
+$g_oCurlStatusText.Add(404, "Not Found")
+$g_oCurlStatusText.Add(405, "Method Not Allowed")
+$g_oCurlStatusText.Add(406, "Not Acceptable")
+$g_oCurlStatusText.Add(407, "Proxy Authentication Required")
+$g_oCurlStatusText.Add(408, "Request Timeout")
+$g_oCurlStatusText.Add(409, "Conflict")
+$g_oCurlStatusText.Add(410, "Gone")
+$g_oCurlStatusText.Add(411, "Length Required")
+$g_oCurlStatusText.Add(412, "Precondition Failed")
+$g_oCurlStatusText.Add(413, "Payload Too Large")
+$g_oCurlStatusText.Add(414, "URI Too Long")
+$g_oCurlStatusText.Add(415, "Unsupported Media Type")
+$g_oCurlStatusText.Add(416, "Range Not Satisfiable")
+$g_oCurlStatusText.Add(417, "Expectation Failed")
+$g_oCurlStatusText.Add(418, "I'm a teapot")
+$g_oCurlStatusText.Add(422, "Unprocessable Entity")
+$g_oCurlStatusText.Add(425, "Too Early")
+$g_oCurlStatusText.Add(426, "Upgrade Required")
+$g_oCurlStatusText.Add(428, "Precondition Required")
+$g_oCurlStatusText.Add(429, "Too Many Requests")
+$g_oCurlStatusText.Add(431, "Request Header Fields Too Large")
+$g_oCurlStatusText.Add(451, "Unavailable For Legal Reasons")
+$g_oCurlStatusText.Add(500, "Internal Server Error")
+$g_oCurlStatusText.Add(501, "Not Implemented")
+$g_oCurlStatusText.Add(502, "Bad Gateway")
+$g_oCurlStatusText.Add(503, "Service Unavailable")
+$g_oCurlStatusText.Add(504, "Gateway Timeout")
+$g_oCurlStatusText.Add(505, "HTTP Version Not Supported")
+$g_oCurlStatusText.Add(507, "Insufficient Storage")
+$g_oCurlStatusText.Add(511, "Network Authentication Required")
+
 
 Func Curl_Setopt_Websocket($hCurl)
     ; Required for WebSocket mode
@@ -90,91 +146,145 @@ Func Curl_Ws_Recv($Handle, $iMax, ByRef $tMeta)
     Return SetExtended($rc, BinaryToString($bin))
 EndFunc
 
-Func Curl_Get($url, $Slist = Null, $username = Null, $password = Null)
+Func Curl_Get($sUrl, $oHeaderList = Null, $jOptions = Null)
+
 	Local $Curl = Curl_Easy_Init()
 	If Not $Curl Then Return
 
 	Local $Html = $Curl ; any number as identify
 	Local $Header = $Curl + 1 ; any number as identify
 
-	Curl_Easy_Setopt($Curl, $CURLOPT_URL, $url)
-
-	Curl_Easy_Setopt ( $Curl, $CURLOPT_ACCEPT_ENCODING, 'gzip, deflate, br, zstd' ) ; Possible values : '', 'identity', 'deflate' or 'gzip'
-
-	if $username <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_USERNAME, $username)
-	if $password <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_PASSWORD, $password)
-
-	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
-	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEDATA, $Html)
-	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEJAR, $CookieFile)
-	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEFILE, $CookieFile)
-	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
-	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
-	if $Slist <> Null Then Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
-	Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)
-
-	;peer verification
-	curl_easy_setopt($Curl, $CURLOPT_CAINFO, @ScriptDir & '\curl-ca-bundle.crt') ;
- 	Curl_Easy_Setopt($Curl, $CURLOPT_SSL_VERIFYPEER, 0)
+    Curl_SetOptions($Curl, $Html, $Header, $sUrl, Null, $oHeaderList, $jOptions)
 
 	Local $Code = Curl_Easy_Perform($Curl)
-	Local $response = ""
+	Local $bodyObj = ""
+    Local $ctype = Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE)
 
 	If $Code = $CURLE_OK Then
- 		$response = BinaryToString(Curl_Data_Get($Html))
+
+   		$body = BinaryToString(Curl_Data_Get($Html))
+
+        If StringInStr($ctype, "application/json") Then
+            ; Parse JSON into a json-c object
+            $bodyObj = _JsonC_TokenerParse($body)
+        Else
+            $bodyObj = _JsonC_ObjectNewString($body)
+        EndIf
+
 	Else
 		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
 	EndIf
+
+    $jResponse = _JsonC_ObjectNewObject()
+    _JsonC_ObjectObjectAdd($jResponse, "status", _JsonC_ObjectNewInt(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE)))
+    _JsonC_ObjectObjectAdd($jResponse, "statusText", _JsonC_ObjectNewString($g_oCurlStatusText.Item(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE))))
+    _JsonC_ObjectObjectAdd($jResponse, "headers", _JsonC_ObjectNewString(BinaryToString(Curl_Data_Get($Header))))
+    _JsonC_ObjectObjectAdd($jResponse, "body", $bodyObj)
+    _JsonC_ObjectObjectAdd($jResponse, "contentType", _JsonC_ObjectNewString($ctype))
+    ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
+    ;_JsonC_ObjectObjectAdd($jResponse, "cookies", _JsonC_ObjectNewString(""))
+    ;_JsonC_ObjectObjectAdd($jResponse, "error", _JsonC_ObjectNewString("null"))
 
 	Curl_Easy_Cleanup($Curl)
 	Curl_Data_Cleanup($Header)
 	Curl_Data_Cleanup($Html)
 
-	return $response
+	return $jResponse
 EndFunc
 
+ ; $username = "", $password = "")
 
-Func Curl_Post($url, $Slist, $Post, $username = "", $password = "")
+Func Curl_Post($sUrl, $sPostData, $oHeaderList = Null, $jOptions = Null)
+
+    Local $Curl = Curl_Easy_Init()
+	If Not $Curl Then Return
+
+	Local $Html = $Curl ; any number as identify
+	Local $Header = $Curl + 1 ; any number as identify
+
+    Curl_SetOptions($Curl, $Html, $Header, $sUrl, $sPostData, $oHeaderList, $jOptions)
+
+	Local $Code = Curl_Easy_Perform($Curl)
+	Local $bodyObj = ""
+    Local $ctype = Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE)
+
+	If $Code = $CURLE_OK Then
+
+   		$body = BinaryToString(Curl_Data_Get($Html))
+
+        If StringInStr($ctype, "application/json") Then
+            ; Parse JSON into a json-c object
+            $bodyObj = _JsonC_TokenerParse($body)
+        Else
+            $bodyObj = _JsonC_ObjectNewString($body)
+        EndIf
+
+	Else
+		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
+	EndIf
+
+    $jResponse = _JsonC_ObjectNewObject()
+    _JsonC_ObjectObjectAdd($jResponse, "status", _JsonC_ObjectNewInt(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE)))
+    _JsonC_ObjectObjectAdd($jResponse, "statusText", _JsonC_ObjectNewString($g_oCurlStatusText.Item(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE))))
+    _JsonC_ObjectObjectAdd($jResponse, "headers", _JsonC_ObjectNewString(BinaryToString(Curl_Data_Get($Header))))
+    _JsonC_ObjectObjectAdd($jResponse, "body", $bodyObj)
+    _JsonC_ObjectObjectAdd($jResponse, "contentType", _JsonC_ObjectNewString($ctype))
+    ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
+    ;_JsonC_ObjectObjectAdd($jResponse, "cookies", _JsonC_ObjectNewString(""))
+    ;_JsonC_ObjectObjectAdd($jResponse, "error", _JsonC_ObjectNewString("null"))
+
+	Curl_Easy_Cleanup($Curl)
+	Curl_Data_Cleanup($Header)
+	Curl_Data_Cleanup($Html)
+
+	return $jResponse
+EndFunc
+
+Func Curl_Delete($sUrl, $oHeaderList = Null, $jOptions = Null)
+
 	Local $Curl = Curl_Easy_Init()
 	If Not $Curl Then Return
 
 	Local $Html = $Curl ; any number as identify
 	Local $Header = $Curl + 1 ; any number as identify
 
-	Curl_Easy_Setopt($Curl, $CURLOPT_USERNAME, $username)
-	Curl_Easy_Setopt($Curl, $CURLOPT_PASSWORD, $password)
-
-	Curl_Easy_Setopt($Curl, $CURLOPT_URL, $url)
-	Curl_Easy_Setopt($Curl, $CURLOPT_FOLLOWLOCATION, 1)
-	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
-	Curl_Easy_Setopt($Curl, $CURLOPT_WRITEDATA, $Html)
-	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEJAR, $CookieFile)
-	Curl_Easy_Setopt($Curl, $CURLOPT_COOKIEFILE, $CookieFile)
-	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
-	Curl_Easy_Setopt($Curl, $CURLOPT_HEADERDATA, $Header)
-	Curl_Easy_Setopt($Curl, $CURLOPT_HTTPHEADER, $Slist)
-	Curl_Easy_Setopt($Curl, $CURLOPT_TIMEOUT, 30)
-	Curl_Easy_Setopt($Curl, $CURLOPT_POST, 1)
-	if StringLen($Post) > 0 Then Curl_Easy_Setopt($Curl, $CURLOPT_COPYPOSTFIELDS, $Post)
-
-	;peer verification
-	curl_easy_setopt($Curl, $CURLOPT_CAINFO, @ScriptDir & '\curl-ca-bundle.crt') ;
- 	Curl_Easy_Setopt($Curl, $CURLOPT_SSL_VERIFYPEER, 0)
+    Curl_SetOptions($Curl, $Html, $Header, $sUrl, Null, $oHeaderList, $jOptions)
+    Curl_Easy_Setopt($Curl, $CURLOPT_CUSTOMREQUEST, "DELETE")
 
 	Local $Code = Curl_Easy_Perform($Curl)
-	Local $response = ""
+	Local $bodyObj = ""
+    Local $ctype = Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE)
 
 	If $Code = $CURLE_OK Then
- 		$response = BinaryToString(Curl_Data_Get($Html))
+
+   		$body = BinaryToString(Curl_Data_Get($Html))
+
+        If StringInStr($ctype, "application/json") Then
+            ; Parse JSON into a json-c object
+            $bodyObj = _JsonC_TokenerParse($body)
+        Else
+            $bodyObj = _JsonC_ObjectNewString($body)
+        EndIf
+
 	Else
 		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
 	EndIf
+
+    $jResponse = _JsonC_ObjectNewObject()
+    _JsonC_ObjectObjectAdd($jResponse, "status", _JsonC_ObjectNewInt(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE)))
+    _JsonC_ObjectObjectAdd($jResponse, "statusText", _JsonC_ObjectNewString($g_oCurlStatusText.Item(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE))))
+    _JsonC_ObjectObjectAdd($jResponse, "headers", _JsonC_ObjectNewString(BinaryToString(Curl_Data_Get($Header))))
+    _JsonC_ObjectObjectAdd($jResponse, "body", $bodyObj)
+    _JsonC_ObjectObjectAdd($jResponse, "contentType", _JsonC_ObjectNewString($ctype))
+    ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
+    ;_JsonC_ObjectObjectAdd($jResponse, "cookies", _JsonC_ObjectNewString(""))
+    ;_JsonC_ObjectObjectAdd($jResponse, "error", _JsonC_ObjectNewString("null"))
 
 	Curl_Easy_Cleanup($Curl)
 	Curl_Data_Cleanup($Header)
 	Curl_Data_Cleanup($Html)
 
-	return $response
+	return $jResponse
 EndFunc
 
 Func Curl_UploadFile($url, $Slist, $filepath, $username = "", $password = "")
@@ -218,5 +328,71 @@ Func Curl_UploadFile($url, $Slist, $filepath, $username = "", $password = "")
 	Curl_FormFree($HttpPost)
 
     Return $response
+EndFunc
+
+Func Curl_SetOptions(ByRef $iCurl, $iHtml, $iHeader, $sUrl, $sPostData, $oHeaderList, $jOptions)
+
+    Local $username = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "username"))
+    Local $password = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "password"))
+    Local $followRedirects = _JsonC_ObjectGetBoolean(_JsonC_ObjectObjectGet($jOptions, "followRedirects"))
+    Local $proxy = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "proxy"))
+    Local $cookieFile = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "cookieFile"))
+    Local $timeout = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($jOptions, "timeout"))
+    if $timeout = Null Then $timeout = 30
+    Local $caInfo = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "caInfo"))
+    if $caInfo = Null Then $caInfo = @ScriptDir & '\curl-ca-bundle.crt'
+    Local $sslVerifyPeer = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($jOptions, "sslVerifyPeer"))
+    if $sslVerifyPeer = Null Then $sslVerifyPeer = 0
+
+	Curl_Easy_Setopt($iCurl, $CURLOPT_URL, $sUrl)
+	if $followRedirects <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_FOLLOWLOCATION, 1)
+	if $proxy <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PROXY, $proxy)
+	Curl_Easy_Setopt($iCurl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
+	Curl_Easy_Setopt($iCurl, $CURLOPT_WRITEDATA, $iHtml)
+	if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEJAR, $cookieFile)
+	if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEFILE, $cookieFile)
+	Curl_Easy_Setopt($iCurl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
+	Curl_Easy_Setopt($iCurl, $CURLOPT_HEADERDATA, $iHeader)
+	if $oHeaderList <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_HTTPHEADER, $oHeaderList)
+	Curl_Easy_Setopt($iCurl, $CURLOPT_TIMEOUT, $timeout)
+	if $sPostData <> Null Then 
+        Curl_Easy_Setopt($iCurl, $CURLOPT_POST, 1)
+        Curl_Easy_Setopt($iCurl, $CURLOPT_COPYPOSTFIELDS, $sPostData)
+    EndIf
+
+	;peer verification
+	Curl_Easy_Setopt($iCurl, $CURLOPT_CAINFO, $caInfo)
+ 	Curl_Easy_Setopt($iCurl, $CURLOPT_SSL_VERIFYPEER, $sslVerifyPeer)
+
+   	if $username <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_USERNAME, $username)
+	if $password <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PASSWORD, $password)
+
+EndFunc
+
+Func Curl_BuildHeaderSlist($jHeaders, ByRef $sContentType)
+
+    Local $iter = _JsonC_ObjectIterInit($jHeaders)
+    Local $header_list = Null
+
+    Do
+        Local $key = _JsonC_ObjectIterGetName($iter)
+        Local $valueObj = _JsonC_ObjectIterGetValue($iter)
+        Local $value = _JsonC_ObjectGetValue($valueObj)
+
+        ; Detect Content-Type (case-insensitive)
+        If StringLower($key) = "content-type" Then
+            $sContentType = $value
+        EndIf
+
+        Local $header = $key & ": " & $value
+
+        If $header_list = Null Then
+            $header_list = Curl_Slist_Append(0, $header)
+        Else
+            $header_list = Curl_Slist_Append($header_list, $header)
+        EndIf
+    Until _JsonC_ObjectIterNext($iter) = False
+
+    Return $header_list
 EndFunc
 

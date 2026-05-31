@@ -71,6 +71,12 @@ Global Const $tagJSONC_OBJECT = _
 ; _JsonC_ObjectArrayLength
 ; _JsonC_ObjectArrayGetIndex
 ; _JsonC_ObjectArrayGetObjects
+;
+; _JsonC_ObjectIterInit
+; _JsonC_ObjectIterNext
+; _JsonC_ObjectIterGetName
+; _JsonC_ObjectIterGetValue
+;
 ; ===============================================================================================================================
 
 ; #FUNCTION# ======================================================================================
@@ -113,12 +119,12 @@ EndFunc
 ; =================================================================================================
 Func _JsonC_TokenerParse($sString)
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_tokener_parse", "str", $sString)
-	If @error Then Return SetError(1, @error, 0) ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	If $avRval[0] = "" Then
-		Return SetError(-1, $avRval[0], 0)
+		Return SetError(-1, $avRval[0], Null)
 	EndIf
 	Local $tJsonObject = DllStructCreate($tagJSONC_OBJECT, $avRval[0])
-	If @error Then Return SetError(1, @error, 0) ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $tJsonObject
 EndFunc
 
@@ -134,7 +140,7 @@ EndFunc
 Func _JsonC_ObjectToJsonString($pObject)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "str", "json_object_to_json_string", "ptr", $pObject)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $avRval[0]
 EndFunc
 
@@ -255,9 +261,9 @@ EndFunc
 Func _JsonC_ObjectObjectGet($pObject, $sKey)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_object_get", "ptr", $pObject, "str", $sKey)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Local $tJsonObject = DllStructCreate($tagJSONC_OBJECT, $avRval[0])
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $tJsonObject
 EndFunc
 
@@ -273,7 +279,7 @@ EndFunc
 Func _JsonC_ObjectGetBoolean($pObject)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "boolean", "json_object_get_boolean", "ptr", $pObject)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $avRval[0]
 EndFunc
 
@@ -305,7 +311,7 @@ EndFunc
 Func _JsonC_ObjectGetInt($pObject)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "int", "json_object_get_int", "ptr", $pObject)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $avRval[0]
 EndFunc
 
@@ -383,7 +389,7 @@ EndFunc
 Func _JsonC_ObjectGetString($pObject)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
 	Local $avRval = DllCall($__g_hDll_JsonC, "str", "json_object_get_string", "ptr", $pObject)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $avRval[0]
 EndFunc
 
@@ -398,6 +404,7 @@ EndFunc
 ; =================================================================================================
 Func _JsonC_ObjectGetValue($pObject)
 	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
+	if IsPtr($pObject) = False Then Return SetError(1, 0, Null)
 	Local $iType, $iLength
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_get_value", "ptr", $pObject, "int*", $iType, "int*", $iLength)
 	If @error Then Return SetError(1, @error, "") ; DllCall error
@@ -419,7 +426,7 @@ Func _JsonC_ObjectGetValue($pObject)
 		Case $JSONC_TYPE_STRING
 			Return DllStructGetData(DllStructCreate("CHAR[" & $iLength & "]", $avRval[0]), 1)
 	EndSwitch
-	Return SetError(1, @error, "")
+	Return SetError(1, @error, Null)
 EndFunc
 
 ; #FUNCTION# ======================================================================================
@@ -651,6 +658,109 @@ Func _JsonC_ObjectArrayGetObjects($pObject)
 	Next
 	Return $pObjects
 EndFunc
+
+
+
+
+#cs
+Func _JsonC_ObjectIterInit($pObject)
+	if IsPtr($pObject) = False Then $pObject = DllStructGetPtr($pObject)
+	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_iter_begin", "ptr", $pObject)
+	If @error Then Return SetError(1, @error, "") ; DllCall error
+	Return $avRval[0]
+EndFunc
+#ce
+
+Func _JsonC_ObjectIterInit($pObject)
+    If Not IsPtr($pObject) Then $pObject = DllStructGetPtr($pObject)
+
+    ; Get the struct-by-value as a 64-bit value (opaque_ field)
+    Local $avRval = DllCall($__g_hDll_JsonC, "int64", "json_object_iter_begin", "ptr", $pObject)
+    If @error Then Return SetError(1, @error, 0)
+
+    ; Create an AutoIt struct that matches: struct { void* opaque_; }
+    Local $tIter = DllStructCreate("ptr")
+    DllStructSetData($tIter, 1, $avRval[0])
+
+    ; Return the struct, not the raw value
+    Return $tIter
+EndFunc
+
+
+Func _JsonC_ObjectIterGetName($tIter)
+    ; $tIter is a DllStruct from _JsonC_ObjectIterInit
+    If IsPtr($tIter) Then
+        ; if someone passes a ptr by mistake, still handle it
+        Local $pIter = $tIter
+    Else
+        Local $pIter = DllStructGetPtr($tIter)
+    EndIf
+
+    Local $avRval = DllCall($__g_hDll_JsonC, "str", "json_object_iter_peek_name", "ptr", $pIter)
+    If @error Then Return SetError(1, @error, "")
+
+    Return $avRval[0]
+EndFunc
+
+
+Func _JsonC_ObjectIterGetValue($tIter)
+    Local $pIter = DllStructGetPtr($tIter)
+
+    Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_iter_peek_value", "ptr", $pIter)
+    If @error Then Return SetError(1, @error, 0)
+
+    Return $avRval[0] ; this is a json_object*
+EndFunc
+
+Func _JsonC_ObjectIterNext($tIter)
+    Local $pIter = DllStructGetPtr($tIter)
+
+    DllCall($__g_hDll_JsonC, "none", "json_object_iter_next", "ptr", $pIter)
+;	$a="yo"
+;	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $a = ' & $a & @CRLF & '>Error code: ' & @error & @CRLF)
+    If @error Then Return SetError(1, @error, 0)
+
+	if DllStructGetData($tIter, 1) = 0 Then Return False
+	
+	Return True
+EndFunc
+
+
+
+
+#cs
+Func _JsonC_ObjectIterGetName($pIterator)
+	if IsPtr($pIterator) = False Then $pIterator = DllStructGetPtr($pIterator)
+	Local $avRval = DllCall($__g_hDll_JsonC, "str", "json_object_iter_peek_name", "ptr", $pIterator)
+	If @error Then Return SetError(1, @error, "") ; DllCall error
+	Local $pChar = $avRval[0]
+	;### Debug CONSOLE ???
+	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $pChar = ' & $pChar & @CRLF & '>Error code: ' & @error & @CRLF)
+	Exit
+    If $pChar = 0 Then Return ""
+
+
+	;Local $avRval = DllCall($__g_hDll_JsonC, "str", "json_object_to_json_string", "ptr", $pChar)
+;### Debug CONSOLE ???
+;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : @error = ' & @error & @CRLF & '>Error code: ' & @error & @CRLF)
+;Exit
+
+    ; Convert char* ? AutoIt string
+    Local $t = DllStructCreate("char[4096]", $pChar)
+    ;### Debug CONSOLE ???
+    ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $t = ' & $t & @CRLF & '>Error code: ' & @error & @CRLF)
+	Local $fred = DllStructGetData($t, 1)
+	;### Debug CONSOLE ???
+	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $fred = ' & $fred & @CRLF & '>Error code: ' & @error & @CRLF)
+    Return DllStructGetData($t, 1)
+EndFunc
+#ce
+
+
+
+
+
+
 
 ; #FUNCTION# ======================================================================================
 ; Name ..........: _JsonC_Shutdown
