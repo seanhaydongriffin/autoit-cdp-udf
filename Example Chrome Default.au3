@@ -22,7 +22,7 @@ Func BasicWebPageTest($chrome, $page)
 		With teststep("Verify Basic Web Page navigation")
 
 			teststep("Navigate to evil tester test pages")
-			$page.goto("https://testpages.eviltester.com")
+			$page.goto("https://testpages.eviltester.com", False)
 
 			With teststep("Verify the main page")
 				$title = $page.locator("//head/title")

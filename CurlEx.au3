@@ -1,8 +1,7 @@
 #AutoIt3Wrapper_UseX64=y
 #include-once
-
 #include "Curl.au3"
-#include "JsonC.au3"
+#include "JsonCEx.au3"
 
 Global $CookieFile = "cookie.txt"
 
@@ -181,6 +180,54 @@ Func Curl_Get($sUrl, $oHeaderList = Null, $jOptions = Null)
     _JsonC_ObjectObjectAdd($jResponse, "headers", _JsonC_ObjectNewString(BinaryToString(Curl_Data_Get($Header))))
     _JsonC_ObjectObjectAdd($jResponse, "body", $bodyObj)
     _JsonC_ObjectObjectAdd($jResponse, "contentType", _JsonC_ObjectNewString($ctype))
+    ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
+    ;_JsonC_ObjectObjectAdd($jResponse, "cookies", _JsonC_ObjectNewString(""))
+    ;_JsonC_ObjectObjectAdd($jResponse, "error", _JsonC_ObjectNewString("null"))
+
+	Curl_Easy_Cleanup($Curl)
+	Curl_Data_Cleanup($Header)
+	Curl_Data_Cleanup($Html)
+
+	return $jResponse
+EndFunc
+
+Func Curl_Get2($sUrl, $oHeaderList = Null, $jOptions = Null)
+
+	Local $Curl = Curl_Easy_Init()
+	If Not $Curl Then Return
+
+	Local $Html = $Curl ; any number as identify
+	Local $Header = $Curl + 1 ; any number as identify
+
+    Curl_SetOptions($Curl, $Html, $Header, $sUrl, Null, $oHeaderList, $jOptions)
+
+	Local $Code = Curl_Easy_Perform($Curl)
+	Local $bodyObj = _JsonC_Object()
+    Local $ctype = Curl_Easy_GetInfo($Curl, $CURLINFO_CONTENT_TYPE)
+
+	If $Code = $CURLE_OK Then
+
+   		$body = BinaryToString(Curl_Data_Get($Html))
+
+        If StringInStr($ctype, "application/json") Then
+            ; Parse JSON into a json-c object
+            $bodyObj = _JsonC_TokenerParse($body)
+        Else
+            $bodyObj = _JsonC_ObjectNewString($body)
+        EndIf
+
+	Else
+		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
+	EndIf
+
+    $jResponse = _JsonC_Object()
+    $jResponse.add("status", Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE))
+    $jResponse.add("statusText", $g_oCurlStatusText.Item(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE)))
+    $jResponse.add("headers", BinaryToString(Curl_Data_Get($Header)))
+    $jResponse.addJObject("body", $bodyObj)
+    $jResponse.add("contentType", $ctype)
+
+
     ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
     ;_JsonC_ObjectObjectAdd($jResponse, "cookies", _JsonC_ObjectNewString(""))
     ;_JsonC_ObjectObjectAdd($jResponse, "error", _JsonC_ObjectNewString("null"))
