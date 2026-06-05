@@ -18,7 +18,7 @@ Func _JsonC_Object($vJson = "")
     EndIf
 
     _AutoItObject_AddMethod($o, "add", "_JsonC_Object_Add")
-    _AutoItObject_AddMethod($o, "addJObject", "_JsonC_Object_AddJObject")
+    ;_AutoItObject_AddMethod($o, "addJObject", "_JsonC_Object_AddJObject")
     _AutoItObject_AddMethod($o, "get", "_JsonC_Object_Get")
     _AutoItObject_AddMethod($o, "toString", "_JsonC_Object_ToString")
     _AutoItObject_AddMethod($o, "type", "_JsonC_Object_Type")
@@ -34,6 +34,14 @@ Func _JsonC_Object_Add($this, $key, $value = Null)
 
     if IsObj($value) Then
         _AutoItObject_AddProperty($this, $key,  $ELSCOPE_PUBLIC, $value)
+    ElseIf _JsonC_ObjectGetType($value) > 0 Then
+        Local $oChild = _AutoItObject_Create()
+        _AutoItObject_AddProperty($oChild, "handle",  $ELSCOPE_PUBLIC, $value)
+        _AutoItObject_AddMethod($oChild, "type", "_JsonC_Object_Type")
+        _AutoItObject_AddMethod($oChild, "object", "_JsonC_Object_Object")
+        _AutoItObject_AddMethod($oChild, "toString", "_JsonC_Object_ToString")
+        _AutoItObject_AddMethod($oChild, "get", "_JsonC_Object_Get")
+        _AutoItObject_AddProperty($this, $key,  $ELSCOPE_PUBLIC, $oChild)
     Else
         Local $oChild = _AutoItObject_Create()
         _AutoItObject_AddProperty($oChild, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectObjectGet($this.handle, $key))
@@ -45,6 +53,7 @@ Func _JsonC_Object_Add($this, $key, $value = Null)
     Return $this
 EndFunc
 
+#cs
 Func _JsonC_Object_AddJObject($this, $key, $jObj)
     _JsonC_ObjectObjectAdd($this.handle, $key, $jObj)
 
@@ -56,6 +65,7 @@ Func _JsonC_Object_AddJObject($this, $key, $jObj)
 
     Return $this
 EndFunc
+#ce
 
 Func _JsonC_Object_Get($this, $sName)
     $obj = _JsonC_ObjectObjectGet($this.handle, $sName)
@@ -65,6 +75,7 @@ Func _JsonC_Object_Get($this, $sName)
 EndFunc
 
 Func _JsonC_Object_ToString($this)
+    ;if $this = Null Then ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $this = ' & '$this' & @CRLF & '>Error code: ' & @error & @CRLF)
     Return _JsonC_ObjectToJsonString($this.handle)
 EndFunc
 

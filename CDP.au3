@@ -567,7 +567,7 @@ Func __CDP_Browser_Connect($port)
 
 	; Get the browser level websocket
 
-	Local $resp = Curl_Get2("http://localhost:" & $port & "/json/version")
+	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
 	Local $browserWsUrl = _JsonC_ObjectGetValue(_JsonC_ObjectObjectGet($resp.body.object(), "webSocketDebuggerUrl"))
 	
 	If $browserWsUrl = Null Then
