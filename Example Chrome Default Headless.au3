@@ -8,7 +8,7 @@
 $hTimer = TimerInit()
 
 $chrome = $browser.launch(Default, 9299, "--headless=new")
-$page = $chrome.page()
+$page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
 

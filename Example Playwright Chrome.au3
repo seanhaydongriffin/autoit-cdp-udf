@@ -8,7 +8,7 @@
 $hTimer = TimerInit()
 
 $chrome = $browser.launch(@LocalAppDataDir & '\ms-playwright\chromium-1217\chrome-win64\chrome.exe', 9299, Default, Default, "1280,800")
-$page = $chrome.page()
+$page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
 

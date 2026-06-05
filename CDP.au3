@@ -588,17 +588,11 @@ Func _CDP_Browser_NewPage($oSelf)
 
 	; create a target
     Local $resp = _CDP_SendSync($oSelf, "Target.createTarget", _JsonC_Object().add("url", "about:blank"))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $targetIdObj = _JsonC_ObjectObjectGet($resultObj, "targetId")
-    Local $targetIdVal = _JsonC_ObjectGetValue($targetIdObj)
+	Local $targetIdVal = _JsonC_Object($resp).get("result").get("targetId").value()
 
 	; attach to the target
     Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", _JsonC_Object().add("targetId", $targetIdVal).add("flatten", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $sessionIdObj = _JsonC_ObjectObjectGet($resultObj, "sessionId")
-    Local $sessionIdVal = _JsonC_ObjectGetValue($sessionIdObj)
+	Local $sessionIdVal = _JsonC_Object($resp).get("result").get("sessionId").value()
 
 	; inform the parent browser object that this is the active target
 
@@ -693,10 +687,7 @@ Func _CDP_Browser_GetNewPage($oSelf)
 
 			; attach to the target
 			Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", _JsonC_Object().add("targetId", $oState.Item("nextTargetId")).add("flatten", True))
-
-			Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-			Local $sessionIdObj = _JsonC_ObjectObjectGet($resultObj, "sessionId")
-			Local $sessionIdVal = _JsonC_ObjectGetValue($sessionIdObj)
+			Local $sessionIdVal = _JsonC_Object($resp).get("result").get("sessionId").value()
 
 			$oState.Item("nextTargetId") = Null
 
@@ -771,9 +762,7 @@ EndFunc
 Func _CDP_Page_Goto($oSelf, $url, $waitForLoad = True)
 
     _CDP_SendSync($oSelf, "Page.navigate", _JsonC_Object().add("url", $url))
-
 	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
-
     Return $oSelf
 EndFunc
 
@@ -783,11 +772,7 @@ Func _CDP_Page_Evaluate($oSelf, $expression)
 	;_CDP_WaitForLoad()
 
     ; 2. Parse objectId
-    Local $resultObj = _JsonC_ObjectObjectGet($evalObj, "result")
-    Local $remoteObj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($remoteObj, "value")
-    Local $valueObjVal = _JsonC_ObjectGetValue($valueObj)
-
+	Local $valueObjVal = _JsonC_Object($evalObj).get("result").get("result").get("value").value()
     If $valueObjVal = "" Then Return 0
 	return $valueObjVal
 
@@ -806,13 +791,7 @@ EndFunc
 Func _CDP_Page_SetContent($oSelf, $sHtml)
 
     Local $resp = _CDP_SendSync($oSelf, "Page.getFrameTree")
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $frameTreeObj = _JsonC_ObjectObjectGet($resultObj, "frameTree")
-    Local $frameObj = _JsonC_ObjectObjectGet($frameTreeObj, "frame")
-    Local $frameIdObj = _JsonC_ObjectObjectGet($frameObj, "id")
-    Local $frameIdVal = _JsonC_ObjectGetString($frameIdObj)
-
+	Local $frameIdVal = _JsonC_Object($resp).get("result").get("frameTree").get("frame").get("id").value()
 	_CDP_SendSync($oSelf, "Page.setDocumentContent", _JsonC_Object().add("frameId", $frameIdVal).add("html", $sHtml))
 
 EndFunc
@@ -820,56 +799,32 @@ EndFunc
 Func _CDP_Page_Url($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", _JsonC_Object().add("expression", "window.location.href").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetString($valueObj)
-
-    Return $valueVal
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
 Func _CDP_Page_Title($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", _JsonC_Object().add("expression", "document.title").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetString($valueObj)
-
-    Return $valueVal
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
 Func _CDP_Page_Content($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.evaluate", _JsonC_Object().add("expression", "document.documentElement.outerHTML").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetString($valueObj)
-
-    Return $valueVal
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
 Func _CDP_Page_ViewportSize($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Page.getLayoutMetrics")
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $layoutViewportObj = _JsonC_ObjectObjectGet($resultObj, "layoutViewport")
-    Local $clientWidthObj = _JsonC_ObjectObjectGet($layoutViewportObj, "clientWidth")
-    Local $clientWidthVal = _JsonC_ObjectGetString($clientWidthObj)
-    Local $clientHeightObj = _JsonC_ObjectObjectGet($layoutViewportObj, "clientHeight")
-    Local $clientHeightVal = _JsonC_ObjectGetString($clientHeightObj)
+	Local $layoutViewport = _JsonC_Object($resp).get("result").get("layoutViewport")
 
     Local $a[2]
-    $a[0] = $clientWidthVal
-    $a[1] = $clientHeightVal
+    $a[0] = $layoutViewport.get("clientWidth").value()
+    $a[1] = $layoutViewport.get("clientHeight").value()
     Return $a
 
 EndFunc
@@ -879,20 +834,14 @@ Func __CDP_Perform_Search($selector)
 	for $i = 1 to 2
 
 		Local $resp = _CDP_SendSync("DOM.performSearch", _JsonC_Object().add("query", $selector))
-
-		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-		Local $searchIdObj = _JsonC_ObjectObjectGet($resultObj, "searchId")
-		Local $searchIdVal = _JsonC_ObjectGetValue($searchIdObj)
+		Local $searchIdVal = _JsonC_Object($resp).get("result").get("searchId").value()
 		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $searchIdVal = ' & $searchIdVal & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 
 		Local $resp = _CDP_SendSync("DOM.getSearchResults", _JsonC_Object().add("searchId", $searchIdVal).add("fromIndex", 0).add("toIndex", 1))
+		Local $nodeIdsObj = _JsonC_Object($resp).get("result").get("nodeIds")
 
-		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-		Local $nodeIdsObj = _JsonC_ObjectObjectGet($resultObj, "nodeIds")
-		$nodeIds = _JsonC_ObjectArrayGetObjects($nodeIdsObj)
-
-		For $nodeId in $nodeIds
-			$nodeIdVal = _JsonC_ObjectGetValue($nodeId)
+		For $i = 0 to $nodeIdsObj.count() - 1
+			$nodeIdVal = $nodeIdsObj.at($i).value()
 			if $nodeIdVal = 0 Then ExitLoop
 			return $nodeIdVal
 		Next
@@ -913,13 +862,8 @@ Func __CDP_Object_To_Node($oSelf)
 		;Local $hStarttime = TimerInit()
 		Local $resp = _CDP_SendSync($oSelf, "DOM.requestNode", _JsonC_Object().add("objectId", $oSelf.objectId))
 		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
-		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-		Local $nodeIdObj = _JsonC_ObjectObjectGet($resultObj, "nodeId")
-		Local $nodeIdVal = _JsonC_ObjectGetValue($nodeIdObj)
-
+		Local $nodeIdVal = _JsonC_Object($resp).get("result").get("nodeId").value()
 		if $nodeIdVal <> 0 Then Return $nodeIdVal
-
 		;Local $hStarttime = TimerInit()
 		_CDP_SendSync($oSelf, "DOM.getDocument", _JsonC_Object().add("depth", 0))
 		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
@@ -934,15 +878,13 @@ Func __CDP_Object_To_Node2($oSelf)
 
 	for $i = 1 to 2
 
+		Local $backendNodeIdVal
+
 		if $i = 1 Then
 			Local $hStarttime = TimerInit()
 			Local $resp = _CDP_SendSync($oSelf, "DOM.describeNode", _JsonC_Object().add("objectId", $oSelf.objectId))
 			ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
-			Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-			Local $nodeObj = _JsonC_ObjectObjectGet($resultObj, "node")
-			Local $backendNodeIdObj = _JsonC_ObjectObjectGet($nodeObj, "backendNodeId")
-			Local $backendNodeIdVal = _JsonC_ObjectGetValue($backendNodeIdObj)
+			$backendNodeIdVal = _JsonC_Object($resp).get("result").get("node").get("backendNodeId").value()
 		Else
 
 			Local $hStarttime = TimerInit()
@@ -954,6 +896,10 @@ Func __CDP_Object_To_Node2($oSelf)
 
 		Local $resp = _CDP_SendSync($oSelf, "DOM.pushNodesByBackendIdsToFrontend", _JsonC_Object().add("backendNodeIds", _JsonC_Array().add($backendNodeIdVal)))
 		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+		Local $resultObj = _JsonC_Object($resp).get("result")
+		Local $resultType = $resultObj.type()
+		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $resultType = ' & $resultType & @CRLF & '>Error code: ' & @error & @CRLF)
+Exit
 
 		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
 		if _JsonC_ObjectIsType($resultObj, $JSONC_TYPE_NULL) = 1 Then ContinueLoop
@@ -1022,17 +968,13 @@ Func _CDP_Page_Locator($oSelf, $selector)
 
 		Local $resp = _CDP_Evaluate($oSelf, $expr)
 
-		;$json_str = _JsonC_ObjectToJsonString($resp)
-		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $json_str = ' & $json_str & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
 		; Parse objectId
-		Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-		Local $remoteObj = _JsonC_ObjectObjectGet($resultObj, "result")
-		Local $objectIdObj = _JsonC_ObjectObjectGet($remoteObj, "objectId")
 
-		if @error = 0 Then
+		Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
 
-			Local $objectIdVal = _JsonC_ObjectGetValue($objectIdObj)
+		if $objectIdObj <> Null Then
+
+			Local $objectIdVal = $objectIdObj.value()
 
 			; Create the Locator object
 
@@ -1170,13 +1112,10 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	Local $resp = _CDP_Evaluate($oSelf, $expr)
 
 	; Parse objectId
-	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-	Local $remoteObj = _JsonC_ObjectObjectGet($resultObj, "result")
-	Local $objectIdObj = _JsonC_ObjectObjectGet($remoteObj, "objectId")
 
-	if @error <> 0 Then Return Null
-
-	Local $objectIdVal = _JsonC_ObjectGetValue($objectIdObj)
+	Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
+	if $objectIdObj = Null Then Return Null
+	Local $objectIdVal = $objectIdObj.value()
 
 	; Create the Locator object
 
@@ -1284,17 +1223,13 @@ Func _CDP_Locator_Hover($oSelf)
 
     ; 3. Get box model
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
-
 	if $resp = Null Then Return SetError(2, 0, "No box model")
 
-	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-	Local $modelObj = _JsonC_ObjectObjectGet($resultObj, "model")
-	Local $contentObj = _JsonC_ObjectObjectGet($modelObj, "content")
-	$content = _JsonC_ObjectArrayGetObjects($contentObj)
+	Local $contentObj = _JsonC_Object($resp).get("result").get("model").get("content")
 
 	Local $left, $right, $top, $bottom, $loop_num = 0
-	For $eachContent in $content
-		$eachVal = _JsonC_ObjectGetValue($eachContent)
+	For $i = 0 to $contentObj.count() - 1
+		$eachVal = $contentObj.at($i).value()
 		$loop_num = $loop_num + 1
 		Switch $loop_num
 			Case 1
@@ -1417,13 +1352,7 @@ EndFunc
 Func _CDP_Locator_TextContent($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.textContent; }").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetString($valueObj)
-
-    Return $valueVal
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
@@ -1433,14 +1362,10 @@ Func _CDP_Locator_InnerText($oSelf)
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerText; }").add("returnByValue", True))
 
     ; Extract the "result.value"
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
-
+	Local $valueVal = _JsonC_Object($resp).get("result").get("result").get("value").value()
 	$oSelf.value = $valueVal
-
 	Return $valueVal
+
 EndFunc
 
 Func _CDP_Locator_InnerTextCRStripped($oSelf)
@@ -1461,28 +1386,17 @@ EndFunc
 Func _CDP_Locator_InnerHTML($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerHTML; }").add("returnByValue", True))
-
     ; Extract the "result.value"
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
-
-	Return $valueVal
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
 Func _CDP_Locator_InputValue($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.value; }").add("returnByValue", True))
-
     ; Extract the "result.value"
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Local $valueVal = _JsonC_ObjectGetValue($valueObj)
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
-	Return $valueVal
 EndFunc
 
 Func _CDP_Locator_GetAttribute($oSelf, $name)
@@ -1490,14 +1404,11 @@ Func _CDP_Locator_GetAttribute($oSelf, $name)
 	$oSelf.nodeId = __CDP_Object_To_Node($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "DOM.getAttributes", _JsonC_Object().add("nodeId", $oSelf.nodeId))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $attributesObj = _JsonC_ObjectObjectGet($resultObj, "attributes")
+	Local $attributesObj = _JsonC_Object($resp).get("result").get("attributes")
 
 	Local $getNextAttribute = False
-	$attributes = _JsonC_ObjectArrayGetObjects($attributesObj)
-	For $attribute in $attributes
-		$attributeVal = _JsonC_ObjectGetValue($attribute)
+	For $i = 0 to $attributesObj.count() - 1
+		$attributeVal = $attributesObj.at($i).value()
 		;if $getNextAttribute = True Then Return ValueObj($attributeVal)
 		if $getNextAttribute = True Then Return $attributeVal
 		if $attributeVal = $name Then $getNextAttribute = True
@@ -1510,17 +1421,13 @@ Func _CDP_Locator_BoundingBox($oSelf)
 
     ; 3. Get box model
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
-
 	if $resp = Null Then Return SetError(2, 0, "No box model")
 
-	Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-	Local $modelObj = _JsonC_ObjectObjectGet($resultObj, "model")
-	Local $borderObj = _JsonC_ObjectObjectGet($modelObj, "border")
-	$border = _JsonC_ObjectArrayGetObjects($borderObj)
+	Local $borderObj = _JsonC_Object($resp).get("result").get("model").get("border")
 
 	Local $left, $right, $top, $bottom, $loop_num = 0
-	For $eachborder in $border
-		$eachVal = _JsonC_ObjectGetValue($eachborder)
+	For $i = 0 to $borderObj.count() - 1
+		$eachVal = $borderObj.at($i).value()
 		$loop_num = $loop_num + 1
 		Switch $loop_num
 			Case 1
@@ -1577,12 +1484,8 @@ EndFunc
 Func __CDP_Locator_IsVisibleValue($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { const r = this.getBoundingClientRect(); return !!(r.width && r.height); }").add("returnByValue", True))
-
     ; Extract the "result.value"
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-    Return _JsonC_ObjectGetValue($valueObj)
+	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
 EndFunc
 
@@ -1599,13 +1502,8 @@ EndFunc
 Func __CDP_Locator_IsDisabledValue($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.disabled; }").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-
 	; Convert numeric 0/1 → AutoIt boolean
-    Return (_JsonC_ObjectGetBoolean($valueObj) <> 0)
+    Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
 
 EndFunc
 
@@ -1622,26 +1520,16 @@ Func _CDP_Locator_IsEditable($oSelf)
     ; Playwright-equivalent logic:
     ; editable = !disabled && !readOnly
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return !this.disabled && !this.readOnly; }").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-
     ; Convert numeric 0/1 → AutoIt boolean
-    Return (_JsonC_ObjectGetBoolean($valueObj) <> 0)
+    Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
 
 EndFunc
 
 Func _CDP_Locator_IsChecked($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
-
-    Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
-    Local $result2Obj = _JsonC_ObjectObjectGet($resultObj, "result")
-    Local $valueObj = _JsonC_ObjectObjectGet($result2Obj, "value")
-
 	; Convert numeric 0/1 → AutoIt boolean
-    Return (_JsonC_ObjectGetBoolean($valueObj) <> 0)
+    Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
 
 EndFunc
 

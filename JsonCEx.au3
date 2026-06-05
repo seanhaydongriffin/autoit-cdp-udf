@@ -4,13 +4,22 @@
 
 #region --- Object ---
 
-Func _JsonC_Object()
+Func _JsonC_Object($vJson = "")
     Local $o = _AutoItObject_Create()
-    _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewObject())
+
+    if IsString($vJson) Then
+        if $vJson = "" Then
+            _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewObject())
+        Else
+            _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_TokenerParse($vJson))
+        EndIf
+    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then 
+        _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, $vJson)
+    EndIf
 
     _AutoItObject_AddMethod($o, "add", "_JsonC_Object_Add")
     _AutoItObject_AddMethod($o, "addJObject", "_JsonC_Object_AddJObject")
-    _AutoItObject_AddMethod($o, "fromString", "_JsonC_Object_FromString")
+    _AutoItObject_AddMethod($o, "get", "_JsonC_Object_Get")
     _AutoItObject_AddMethod($o, "toString", "_JsonC_Object_ToString")
     _AutoItObject_AddMethod($o, "type", "_JsonC_Object_Type")
     _AutoItObject_AddMethod($o, "value", "_JsonC_Object_Value")
@@ -48,19 +57,11 @@ Func _JsonC_Object_AddJObject($this, $key, $jObj)
     Return $this
 EndFunc
 
-Func _JsonC_Object_FromString($str)
-
-    Local $o = _AutoItObject_Create()
-    _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_TokenerParse($str))
-
-    _AutoItObject_AddMethod($o, "add", "_JsonC_Object_Add")
-    _AutoItObject_AddMethod($o, "fromString", "_JsonC_Object_FromString")
-    _AutoItObject_AddMethod($o, "toString", "_JsonC_Object_ToString")
-    _AutoItObject_AddMethod($o, "type", "_JsonC_Object_Type")
-    _AutoItObject_AddMethod($o, "value", "_JsonC_Object_Value")
-    _AutoItObject_AddDestructor($o, "_JsonC_Object_Destroy")
-
-    Return $o
+Func _JsonC_Object_Get($this, $sName)
+    $obj = _JsonC_ObjectObjectGet($this.handle, $sName)
+   	If @error Then Return SetError(1, @error, Null)
+    if _JsonC_ObjectGetType($obj) = $JSONC_TYPE_ARRAY Then return _JsonC_Array($obj)
+    return _JsonC_Object($obj)
 EndFunc
 
 Func _JsonC_Object_ToString($this)
@@ -87,9 +88,16 @@ EndFunc
 
 #region --- Array ---
 
-Func _JsonC_Array()
+Func _JsonC_Array($vJson = "")
     Local $oObj = _AutoItObject_Create()
-    _AutoItObject_AddProperty($oObj, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewArray())
+
+    if IsString($vJson) Then
+        if $vJson = "" Then
+            _AutoItObject_AddProperty($oObj, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewArray())
+        EndIf
+    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then 
+        _AutoItObject_AddProperty($oObj, "handle",  $ELSCOPE_PUBLIC, $vJson)
+    EndIf
 
     _AutoItObject_AddProperty($oObj, "first")
     _AutoItObject_AddProperty($oObj, "last")
@@ -167,15 +175,18 @@ Func _JsonC_Array_Remove($self, $index)
 EndFunc
 
 Func _JsonC_Array_At($self, $index)
-    Local $i = 0
-    For $Element In $self
-        If $i = $index Then Return $Element
-        $i += 1
-    next
-    Return SetError(1, 0, 0)
+    if $self.size > 1 Then
+        Local $i = 0
+        For $Element In $self
+            If $i = $index Then Return $Element
+            $i += 1
+        next
+    EndIf
+    Return _JsonC_Object(_JsonC_ObjectArrayGetIndex($self.handle, $index))
 EndFunc
 
 Func _JsonC_Array_Count($self)
+    if _JsonC_ObjectGetType($self.handle) = $JSONC_TYPE_ARRAY Then Return _JsonC_ObjectArrayLength($self.handle)
     Return $self.size
 EndFunc
 
