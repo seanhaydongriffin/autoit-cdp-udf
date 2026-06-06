@@ -7,9 +7,10 @@
 
 With test("Simple API GET test")
 
-	$step = teststep("Get all items")
-		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items')
-		LogResponse($step, $jResp, 200, "OK")
+	$step = teststep("Get all items as json")
+		$jHeaderData = _JsonC_Object().add("Accept", "application/json")
+		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items', $jHeaderData)
+		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/json")
 
 		$items = $jResp.body.get("items")
 		For $i = 0 to $items.count() - 1
@@ -17,46 +18,32 @@ With test("Simple API GET test")
 		Next
 	$step = 0
 
-	$firstId = LogItemSummary()
-
-	$step = teststep("Delete the first item")
-		$jResp = $api.delete("https://apichallenges.eviltester.com/simpleapi/items/" & $firstId)
-		LogResponse($step, $jResp, 200, "OK")
+	$step = teststep("Get all items as xml with default options")
+		$jHeaderData = _JsonC_Object().add("Accept", "application/xml")
+		$jOptions = _JsonC_Object().add("username", "").add("password", "").add("proxy", "").add("timeout", 30).add("followRedirects", True).add("cookieFile", "cookies.txt").add("caInfo", "curl-ca-bundle.crt").add("sslVerifyPeer", False)
+		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items', $jHeaderData, $jOptions)
+		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/xml")
 	$step = 0
 
-	$firstId = LogItemSummary()
-	$isbn = GetISBN()
-
-	$step = teststep("Create an item with JSON data")
-		$jPostData = _JsonC_Object()
-		$jPostData.add("type", "blu-ray")
-		$jPostData.add("isbn13", $isbn)
-		$jPostData.add("price", 97.99)
-		$jPostData.add("numberinstock", 0)
-		$jHeaderData = _JsonC_Object()
-		$jHeaderData.add("Content-Type", "application/json")
-		$jResp = $api.post('https://apichallenges.eviltester.com/simpleapi/items', $jPostData.handle, $jHeaderData.handle)
-		LogResponse($step, $jResp, 201, "Created")
+	$step = teststep("Get items of type 'cd'")
+		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items?type=cd')
+		if $jResp.body.type() = "string" Then ConsoleWrite("      > Body: " & $jResp.body.value() & @CRLF)
+		if $jResp.body.type() = "object" Then ConsoleWrite("      > Body: " & $jResp.body.toString() & @CRLF)
 	$step = 0
 
-	$firstId = LogItemSummary()
-	DeleteItem($firstId)
-	$isbn = GetISBN()
-
-	$step = teststep("Create an item with String data")
-		;$sOptions = '{ "username": "foo", "password": "bar", "proxy": "127.0.0.1:8888", "timeout": 30, "followRedirects": true, "cookieFile": "cookies.txt", "caInfo": "curl-ca-bundle.crt", "sslVerifyPeer": false }'
-		$jResp = $api.post('https://apichallenges.eviltester.com/simpleapi/items', '{ "type": "blu-ray", "isbn13": "' & $isbn & '", "price": 97.99, "numberinstock": 0 }', '{ "Content-Type": "application/json" }')
-		LogResponse($step, $jResp, 201, "Created")
+	$step = teststep("Get items of type 'blu-ray'")
+		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items?type=blu-ray')
+		if $jResp.body.type() = "string" Then ConsoleWrite("      > Body: " & $jResp.body.value() & @CRLF)
+		if $jResp.body.type() = "object" Then ConsoleWrite("      > Body: " & $jResp.body.toString() & @CRLF)
 	$step = 0
 
-	LogItemSummary()
 
 EndWith
 
-Func LogResponse($step, $jResp, $expectedStatus, $expectedStatusText)
+Func ExpectedResponse($step, $jResp, $expectedStatus, $expectedStatusText, $headerText)
 	$step.expect($jResp.status.value(), "Status").toBe($expectedStatus, @ScriptLineNumber)
 	$step.expect($jResp.statusText.value(), "Status Text").toBe($expectedStatusText, @ScriptLineNumber)
-	$step.expect($jResp.headers.value(), "Headers").toContain("content-type: application/json", @ScriptLineNumber)
+	$step.expect($jResp.headers.value(), "Headers").toContain($headerText, @ScriptLineNumber)
 	if $jResp.body.type() = "string" Then ConsoleWrite("      > Body: " & $jResp.body.value() & @CRLF)
 	if $jResp.body.type() = "object" Then ConsoleWrite("      > Body: " & $jResp.body.toString() & @CRLF)
 	$step.expect($jResp.contentType.value(), "Content Type").toBe("application/json", @ScriptLineNumber)

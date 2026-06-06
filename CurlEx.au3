@@ -334,25 +334,29 @@ EndFunc
 
 Func Curl_SetOptions(ByRef $iCurl, $iHtml, $iHeader, $sUrl, $sPostData, $oHeaderList, $jOptions)
 
-    Local $username = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "username"))
-    Local $password = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "password"))
-    Local $followRedirects = _JsonC_ObjectGetBoolean(_JsonC_ObjectObjectGet($jOptions, "followRedirects"))
-    Local $proxy = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "proxy"))
-    Local $cookieFile = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "cookieFile"))
-    Local $timeout = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($jOptions, "timeout"))
-    if $timeout = Null Then $timeout = 30
-    Local $caInfo = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($jOptions, "caInfo"))
-    if $caInfo = Null Then $caInfo = @ScriptDir & '\curl-ca-bundle.crt'
-    Local $sslVerifyPeer = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($jOptions, "sslVerifyPeer"))
-    if $sslVerifyPeer = Null Then $sslVerifyPeer = 0
+    Local $followRedirects = Null, $proxy = Null, $cookieFile = Null, $timeout = 30, $username = Null, $password = Null, $caInfo = @ScriptDir & '\curl-ca-bundle.crt', $sslVerifyPeer = 0
 
-	Curl_Easy_Setopt($iCurl, $CURLOPT_URL, $sUrl)
-	if $followRedirects <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_FOLLOWLOCATION, 1)
-	if $proxy <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PROXY, $proxy)
+    if $jOptions <> Null Then
+        $followRedirects                                = $jOptions.get("followRedirects").value()
+        $proxy                                          = $jOptions.get("proxy").value()
+        $cookieFile                                     = $jOptions.get("cookieFile").value()
+        $timeout                                        = $jOptions.get("timeout").value()
+        if $timeout = Null Then $timeout                = 30
+        $caInfo                                         = $jOptions.get("caInfo").value()
+        if $caInfo = Null Then $caInfo                  = @ScriptDir & '\curl-ca-bundle.crt'
+        $sslVerifyPeer                                  = $jOptions.get("sslVerifyPeer").value()
+        if $sslVerifyPeer = Null Then $sslVerifyPeer    = 0
+        $username                                       = $jOptions.get("username").value()
+        $password                                       = $jOptions.get("password").value()
+    EndIf
+
+   	Curl_Easy_Setopt($iCurl, $CURLOPT_URL, $sUrl)
+    if $followRedirects = True Then Curl_Easy_Setopt($iCurl, $CURLOPT_FOLLOWLOCATION, 1)
+    if $proxy <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PROXY, $proxy)
+    if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEJAR, $cookieFile)
+    if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEFILE, $cookieFile)
 	Curl_Easy_Setopt($iCurl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($iCurl, $CURLOPT_WRITEDATA, $iHtml)
-	if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEJAR, $cookieFile)
-	if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEFILE, $cookieFile)
 	Curl_Easy_Setopt($iCurl, $CURLOPT_HEADERFUNCTION, Curl_DataWriteCallback())
 	Curl_Easy_Setopt($iCurl, $CURLOPT_HEADERDATA, $iHeader)
 	if $oHeaderList <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_HTTPHEADER, $oHeaderList)
@@ -361,13 +365,11 @@ Func Curl_SetOptions(ByRef $iCurl, $iHtml, $iHeader, $sUrl, $sPostData, $oHeader
         Curl_Easy_Setopt($iCurl, $CURLOPT_POST, 1)
         Curl_Easy_Setopt($iCurl, $CURLOPT_COPYPOSTFIELDS, $sPostData)
     EndIf
-
 	;peer verification
 	Curl_Easy_Setopt($iCurl, $CURLOPT_CAINFO, $caInfo)
  	Curl_Easy_Setopt($iCurl, $CURLOPT_SSL_VERIFYPEER, $sslVerifyPeer)
-
-   	if $username <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_USERNAME, $username)
-	if $password <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PASSWORD, $password)
+    if $username <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_USERNAME, $username)
+    if $password <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PASSWORD, $password)
 
 EndFunc
 

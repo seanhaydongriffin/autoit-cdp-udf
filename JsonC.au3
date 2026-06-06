@@ -407,7 +407,7 @@ Func _JsonC_ObjectGetValue($pObject)
 	if IsPtr($pObject) = False Then Return SetError(1, 0, Null)
 	Local $iType, $iLength
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_get_value", "ptr", $pObject, "int*", $iType, "int*", $iLength)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	$iType = $avRval[2]
 	$iLength = $avRval[3]
 	Switch $iType
@@ -424,7 +424,9 @@ Func _JsonC_ObjectGetValue($pObject)
 		Case $JSONC_TYPE_ARRAY
 			Return DllStructGetData(DllStructCreate("PTR", $avRval[0]), 1)
 		Case $JSONC_TYPE_STRING
-			Return DllStructGetData(DllStructCreate("CHAR[" & $iLength & "]", $avRval[0]), 1)
+			;Return DllStructGetData(DllStructCreate("CHAR[" & $iLength & "]", $avRval[0]), 1)
+			; the line above can incorrectly return 0 for an empty string, the following is a fix for that
+			Return _JsonC_ObjectGetString($pObject)
 	EndSwitch
 	Return SetError(1, @error, Null)
 EndFunc
@@ -596,9 +598,9 @@ EndFunc
 ; =================================================================================================
 Func _JsonC_ObjectNewString($sString)
 	Local $avRval = DllCall($__g_hDll_JsonC, "ptr", "json_object_new_string", "str", $sString)
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Local $tJsonObject = DllStructCreate($tagJSONC_OBJECT, $avRval[0])
-	If @error Then Return SetError(1, @error, "") ; DllCall error
+	If @error Then Return SetError(1, @error, Null) ; DllCall error
 	Return $tJsonObject
 EndFunc
 

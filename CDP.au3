@@ -357,8 +357,11 @@ EndFunc
 Func _CDP_Api_Get($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
 
 	Local $oHeaderList = Null, $sContentType = Null
-    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+	if $oHeaderData <> Null Then
+		$oHeaderData = $oHeaderData.handle
+	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+	EndIf
 
 	; call curl get
 	Local $response = Curl_Get($sUrl, $oHeaderList, $jOptions)
@@ -368,9 +371,13 @@ EndFunc
 
 Func _CDP_Api_Post($oSelf, $sUrl, $vPostData, $oHeaderData = Null, $jOptions = Null)
 
+	$vPostData = $vPostData.handle
 	Local $oHeaderList = Null, $sContentType = Null
-    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+	if $oHeaderData <> Null Then
+		$oHeaderData = $oHeaderData.handle
+	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+	EndIf
 	If StringInStr($sContentType, "application/json") And IsString($vPostData) = False Then $vPostData = _JsonC_ObjectToJsonString($vPostData)
 
 	; call curl post
@@ -382,8 +389,11 @@ EndFunc
 Func _CDP_Api_Delete($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
 
 	Local $oHeaderList = Null, $sContentType = Null
-    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-	if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
+	if $oHeaderData <> Null Then
+		$oHeaderData = $oHeaderData.handle
+	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+	EndIf
 
 	; call curl get
 	Local $response = Curl_Delete($sUrl, $oHeaderList, $jOptions)
