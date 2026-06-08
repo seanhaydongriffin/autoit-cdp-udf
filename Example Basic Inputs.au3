@@ -23,7 +23,7 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='button-input-key-value']")).toHaveText("", @ScriptLineNumber)
 		EndWith
 
-		$page.locator("//input[@id='button-input']").scrollIntoView().hover()
+		$page.locator("//input[@id='button-input']").hover()
 
 		With teststep("State after hover")
 			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
@@ -52,7 +52,7 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='checkbox-input-checked-value']")).toHaveText("false", @ScriptLineNumber)
 		EndWith
 
-		$page.locator("//input[@id='checkbox-input']").scrollIntoView().hover()
+		$page.locator("//input[@id='checkbox-input']").hover()
 
 		With teststep("State after hover")
 			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
@@ -84,7 +84,7 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-1-checked-value']")).toHaveText("false", @ScriptLineNumber)
 			EndWith
 
-			$page.locator("//input[@id='radio-input-1']").scrollIntoView().hover()
+			$page.locator("//input[@id='radio-input-1']").hover()
 
 			With teststep("State after hover")
 				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
@@ -114,7 +114,7 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-2-checked-value']")).toHaveText("false", @ScriptLineNumber)
 			EndWith
 
-			$page.locator("//input[@id='radio-input-2']").scrollIntoView().hover()
+			$page.locator("//input[@id='radio-input-2']").hover()
 
 			With teststep("State after hover")
 				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)

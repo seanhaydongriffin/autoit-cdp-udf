@@ -404,7 +404,6 @@ EndFunc
 #endregion
 
 
-
 #region --- Browser Class ---
 
 Func _CDP_Browser_IsRunning($oSelf, $port)
@@ -511,18 +510,15 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	$g_CDP_Browsers.Add($port, $oState)
 
     ; Create Browser object
-
     Local $oBrowser = _AutoItObject_Create()
 
     ; Add methods
-
     _AutoItObject_AddMethod($oBrowser, "newPage", "_CDP_Browser_NewPage")
     ;_AutoItObject_AddMethod($oBrowser, "headlessShell", "_CDP_Browser_NewHeadlessShell")
     _AutoItObject_AddMethod($oBrowser, "getNewPage", "_CDP_Browser_GetNewPage")
 	_AutoItObject_AddMethod($oBrowser, "close", "_CDP_Browser_Close")
 
     ; Add properties
-
     _AutoItObject_AddProperty($oBrowser, "type", $ELSCOPE_READONLY, $CDP_BROWSER)
     ;_AutoItObject_AddProperty($oBrowser, "wsUrl", $ELSCOPE_PUBLIC, $browserWsUrl)
     _AutoItObject_AddProperty($oBrowser, "wsPort", $ELSCOPE_PUBLIC, $port)
@@ -533,7 +529,6 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	_CDP_Browser_SetDiscoverTargets($oBrowser)
 
 	; Remove the default "New Tab"
-
 	Local $defaultTargetId = _CDP_Browser_GetDefaultTabTargetId($oBrowser)
 
 	If $defaultTargetId <> Null Then
@@ -542,7 +537,6 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 
     Return $oBrowser
 EndFunc
-
 
 Func _CDP_Browser_SetDiscoverTargets($oSelf)
     _CDP_SendSync($oSelf, "Target.setDiscoverTargets", _JsonC_Object().add("discover", True))
@@ -575,10 +569,8 @@ EndFunc
 
 Func __CDP_Browser_Connect($port)
 
-	; Get the browser level websocket
-
-	Local $resp = Curl_Get("http://localhost:" & $port & "/json/version")
-	Local $browserWsUrl = _JsonC_ObjectGetValue(_JsonC_ObjectObjectGet($resp.body.object(), "webSocketDebuggerUrl"))
+	$jResp = $api.get('http://localhost:' & $port & '/json/version')
+	Local $browserWsUrl = $jResp.body.get("webSocketDebuggerUrl").value()
 	
 	If $browserWsUrl = Null Then
 		ConsoleWrite("No browser WebSocket found" & @CRLF)
@@ -588,7 +580,6 @@ Func __CDP_Browser_Connect($port)
 	ConsoleWrite('> Info : Browser WebSocket Url: ' & $browserWsUrl & @CRLF)
 
 	; Connect to the browser level websocket
-
 	return _CDP_Connect($browserWsUrl)
 
 EndFunc
@@ -605,11 +596,9 @@ Func _CDP_Browser_NewPage($oSelf)
 	Local $sessionIdVal = _JsonC_Object($resp).get("result").get("sessionId").value()
 
 	; inform the parent browser object that this is the active target
-
 	$oSelf.activeTargetId = $targetIdVal
 
     ; Create Page object
-
 	return __CDP_Page_Object($oSelf, $oSelf.wsPort, $oSelf.wsHandle, $sessionIdVal, $targetIdVal)
 
 EndFunc
@@ -698,9 +687,7 @@ Func _CDP_Browser_GetNewPage($oSelf)
 			; attach to the target
 			Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", _JsonC_Object().add("targetId", $oState.Item("nextTargetId")).add("flatten", True))
 			Local $sessionIdVal = _JsonC_Object($resp).get("result").get("sessionId").value()
-
 			$oState.Item("nextTargetId") = Null
-
 			return __CDP_Page_Object($oSelf, $oSelf.wsPort, $oSelf.wsHandle, $sessionIdVal, $oState.Item("nextTargetId"))
 
 		EndIf
@@ -718,7 +705,6 @@ Func _CDP_Browser_Close($oSelf)
     _CDP_SendCommand($oSelf, "Browser.close")
 	Sleep(500)
 	__CDP_RemoveBrowserState(String($oSelf.wsHandle))
-
     Return $oSelf
 
 EndFunc
@@ -732,7 +718,6 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     Local $oPage = _AutoItObject_Create()
 
     ; Add action methods
-
     _AutoItObject_AddMethod($oPage, "goto",      	"_CDP_Page_Goto")
     _AutoItObject_AddMethod($oPage, "locator",    	"_CDP_Page_Locator")
     _AutoItObject_AddMethod($oPage, "locatorNow", 	"_CDP_Page_LocatorNow")
@@ -742,14 +727,12 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddMethod($oPage, "waitForLoad", 	"_CDP_WaitForLoad")
 
 	; Add getter methods
-
 	_AutoItObject_AddMethod($oPage, "url",      	"_CDP_Page_Url")
     _AutoItObject_AddMethod($oPage, "title",      	"_CDP_Page_Title")
     _AutoItObject_AddMethod($oPage, "content",     	"_CDP_Page_Content")
     _AutoItObject_AddMethod($oPage, "viewportSize",	"_CDP_Page_ViewportSize")
 
     ; Add properties
-
     _AutoItObject_AddProperty($oPage, "type", $ELSCOPE_READONLY, $CDP_PAGE)
     _AutoItObject_AddProperty($oPage, "parent", $ELSCOPE_READONLY, $parent)
     ;_AutoItObject_AddProperty($oPage, "wsUrl", $ELSCOPE_PUBLIC, $pageWsUrl)
@@ -759,7 +742,6 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddProperty($oPage, "targetId", $ELSCOPE_PUBLIC, $targetId)
 
     ; Enable core domains
-
     _CDP_SendSync($oPage, "DOM.enable")
     _CDP_SendSync($oPage, "Page.enable")
     _CDP_SendSync($oPage, "Runtime.enable")
@@ -774,14 +756,13 @@ Func _CDP_Page_Goto($oSelf, $url, $waitForLoad = True)
     _CDP_SendSync($oSelf, "Page.navigate", _JsonC_Object().add("url", $url))
 	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
     Return $oSelf
+
 EndFunc
 
 Func _CDP_Page_Evaluate($oSelf, $expression)
 
 	Local $evalObj = _CDP_Evaluate($oSelf, $expression)
 	;_CDP_WaitForLoad()
-
-    ; 2. Parse objectId
 	Local $valueObjVal = _JsonC_Object($evalObj).get("result").get("result").get("value").value()
     If $valueObjVal = "" Then Return 0
 	return $valueObjVal
@@ -791,7 +772,6 @@ EndFunc
 Func _CDP_Page_BringToFront($oSelf)
 
 	_CDP_SendSync($oSelf, "Target.activateTarget", _JsonC_Object().add("targetId", $oSelf.targetId))
-
 	; inform the parent browser object that this is the active target
 	$oSelf.parent.activeTargetId = $oSelf.targetId
 
@@ -863,9 +843,9 @@ Func __CDP_Perform_Search($selector)
 
 EndFunc
 
+#cs 
 
 Func __CDP_Object_To_Node($oSelf)
-
 
 	for $i = 1 to 2
 
@@ -880,9 +860,8 @@ Func __CDP_Object_To_Node($oSelf)
 
 	Next
 
-
 EndFunc
-
+#ce
 
 Func __CDP_Object_To_Node2($oSelf)
 
@@ -979,7 +958,6 @@ Func _CDP_Page_Locator($oSelf, $selector)
 		Local $resp = _CDP_Evaluate($oSelf, $expr)
 
 		; Parse objectId
-
 		Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
 
 		if $objectIdObj <> Null Then
@@ -987,11 +965,10 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			Local $objectIdVal = $objectIdObj.value()
 
 			; Create the Locator object
-
 			Local $oLocator = _AutoItObject_Create()
 
 			; Add action methods
-
+			_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
 			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; partially done - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent, Runtime.callFunctionOn
 			_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; todo - Reqs CDP Commands same as click (twice)
 			_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
@@ -1013,7 +990,6 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
 
 			; Add getter methods
-
 			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done - Reqs CDP Commands Runtime.callFunctionOn
 			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done - Reqs CDP Commands Runtime.callFunctionOn
 			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done - Reqs CDP Commands Runtime.callFunctionOn
@@ -1032,7 +1008,6 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")										; todo - Reqs CDP Commands DOM.querySelectorAll
 
 			; Add state methods
-
 			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done - Reqs CDP Commands Runtime.callFunctionOn, DOM.getBoxModel
 			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done - Reqs CDP Commands same as isVisible
 			_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done - Reqs CDP Commands Runtime.callFunctionOn
@@ -1041,13 +1016,11 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done - Reqs CDP Commands Runtime.callFunctionOn
 
 			; Add waiting methods
-
 			_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")									; todo - Reqs CDP Commands DOM.querySelector, Runtime.callFunctionOn, DOM.getBoxModel
 			_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")			; todo - Reqs CDP Commands Runtime.callFunctionOn, DOM.getBoxModel
 			_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")					; todo - Reqs CDP Commands DOM.querySelector, DOM.querySelectorAll
 
 			; Add locator-creation methods
-
 			_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")									; todo - Reqs CDP Commands No CDP — internal selector logic
 			_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")										; todo - Reqs CDP Commands No CDP — internal selector logic
 			_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")											; todo - Reqs CDP Commands No CDP — internal selector logic
@@ -1062,19 +1035,20 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")							; todo - Reqs CDP Commands No CDP — internal selector logic
 
 			; Add properties
-
 			_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
 			_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
 			_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
 			_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
 			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
-
-			Local $hTimer = TimerInit()
-			Local $nodeIdVal = __CDP_Object_To_Node($oLocator)
-			;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hTimer) = ' & TimerDiff($hTimer) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-			;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $nodeIdVal = ' & $nodeIdVal & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-
-			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, $nodeIdVal)
+			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, 0)
+			_AutoItObject_AddProperty($oLocator, "bboxLeft", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxTop", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxRight", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxBottom", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxWidth", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxHeight", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxCenterX", $ELSCOPE_PUBLIC, -1)
+			_AutoItObject_AddProperty($oLocator, "bboxCenterY", $ELSCOPE_PUBLIC, -1)
 			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
 			Return $oLocator
@@ -1122,18 +1096,15 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	Local $resp = _CDP_Evaluate($oSelf, $expr)
 
 	; Parse objectId
-
 	Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
 	if $objectIdObj = Null Then Return Null
 	Local $objectIdVal = $objectIdObj.value()
 
 	; Create the Locator object
-
 	Local $oLocator = _AutoItObject_Create()
 	Local $oExpect = _AutoItObject_Create()
 
 	; Add action methods
-
 	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
 	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")
 	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")
@@ -1154,7 +1125,6 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")
 
 	; Add getter methods
-
 	_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")
 	_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
 	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
@@ -1173,7 +1143,6 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")
 
 	; Add state methods
-
 	_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
 	_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
 	_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")
@@ -1182,13 +1151,11 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")
 
 	; Add waiting methods
-
 	_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")
 	_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")
 	_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")
 
 	; Add locator-creation methods
-
 	_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")
 	_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")
 	_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")
@@ -1203,7 +1170,6 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")
 
 	; Add properties
-
 	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
 	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
@@ -1215,12 +1181,36 @@ EndFunc
 
 #region --- Locator Class ---
 
+
+Func _CDP_Locator_ObjectToNode($oSelf)
+
+	for $i = 1 to 2
+
+		;Local $hStarttime = TimerInit()
+		Local $resp = _CDP_SendSync($oSelf, "DOM.requestNode", _JsonC_Object().add("objectId", $oSelf.objectId))
+		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+		Local $nodeIdVal = _JsonC_Object($resp).get("result").get("nodeId").value()
+		if $nodeIdVal <> 0 Then 
+			$oSelf.nodeId = $nodeIdVal
+			Return True
+		EndIf
+		;Local $hStarttime = TimerInit()
+		_CDP_SendSync($oSelf, "DOM.getDocument", _JsonC_Object().add("depth", 0))
+		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+	Next
+
+	Return False
+EndFunc
+
+
+
+
+
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.click(); }").add("awaitPromise", False))
-
 	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
-
 	return $oSelf
 
 EndFunc
@@ -1231,35 +1221,9 @@ EndFunc
 
 Func _CDP_Locator_Hover($oSelf)
 
-    ; 3. Get box model
-    Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
-	if $resp = Null Then Return SetError(2, 0, "No box model")
-
-	Local $contentObj = _JsonC_Object($resp).get("result").get("model").get("content")
-
-	Local $left, $right, $top, $bottom, $loop_num = 0
-	For $i = 0 to $contentObj.count() - 1
-		$eachVal = $contentObj.at($i).value()
-		$loop_num = $loop_num + 1
-		Switch $loop_num
-			Case 1
-				$left = $eachVal
-			Case 2
-				$top = $eachVal
-			Case 5
-				$right = $eachVal
-			Case 6
-				$bottom = $eachVal
-		EndSwitch
-	Next
-
-    ; 4. Compute center point
-    Local $cx = ($left + $right) / 2
-    Local $cy = ($top + $bottom) / 2
-
-    ; 5. Dispatch mouseMoved event
-    Local $resp = _CDP_SendSync($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $cx).add("y", $cy))
-
+	_CDP_Locator_ScrollIntoView($oSelf)
+    ; Dispatch mouseMoved event
+    Local $resp = _CDP_SendSync($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	return $oSelf
 
 EndFunc
@@ -1326,9 +1290,7 @@ EndFunc
 Func _CDP_Locator_ScrollIntoView($oSelf)
 
     _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.scrollIntoView({block: 'center', inline: 'center'}); }").add("awaitPromise", True))
-
 	__CDP_Locator_WaitForStableBox($oSelf)
-
 	return $oSelf
 
 EndFunc
@@ -1340,15 +1302,12 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
     While TimerDiff($t) < $timeout
         Local $box = _CDP_Locator_BoundingBox($oSelf)
         If @error Then Return SetError(1,0,False)
+        
+		; If position hasn't changed for 2 consecutive checks → stable
+        If $oSelf.bboxLeft = $lastLeft And $oSelf.bboxTop = $lastTop Then Return True
 
-        Local $left = $box.Item("left")
-        Local $top  = $box.Item("top")
-
-        ; If position hasn't changed for 2 consecutive checks → stable
-        If $left = $lastLeft And $top = $lastTop Then Return True
-
-        $lastLeft = $left
-        $lastTop  = $top
+        $lastLeft = $oSelf.bboxLeft
+        $lastTop  = $oSelf.bboxTop
         Sleep(20)
     WEnd
 
@@ -1370,7 +1329,6 @@ EndFunc
 Func _CDP_Locator_InnerText($oSelf)
 
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerText; }").add("returnByValue", True))
-
     ; Extract the "result.value"
 	Local $valueVal = _JsonC_Object($resp).get("result").get("result").get("value").value()
 	$oSelf.value = $valueVal
@@ -1411,7 +1369,7 @@ EndFunc
 
 Func _CDP_Locator_GetAttribute($oSelf, $name)
 
-	$oSelf.nodeId = __CDP_Object_To_Node($oSelf)
+	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 
     Local $resp = _CDP_SendSync($oSelf, "DOM.getAttributes", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 	Local $attributesObj = _JsonC_Object($resp).get("result").get("attributes")
@@ -1429,11 +1387,13 @@ EndFunc
 
 Func _CDP_Locator_BoundingBox($oSelf)
 
+	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
+
     ; 3. Get box model
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 	if $resp = Null Then Return SetError(2, 0, "No box model")
-
 	Local $borderObj = _JsonC_Object($resp).get("result").get("model").get("border")
+	if $borderObj = Null then ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $borderObj = ' & $borderObj & @CRLF & '>Error code: ' & @error & @CRLF)
 
 	Local $left, $right, $top, $bottom, $loop_num = 0
 	For $i = 0 to $borderObj.count() - 1
@@ -1441,26 +1401,20 @@ Func _CDP_Locator_BoundingBox($oSelf)
 		$loop_num = $loop_num + 1
 		Switch $loop_num
 			Case 1
-				$left = $eachVal
+				$oSelf.bboxLeft = $eachVal
 			Case 2
-				$top = $eachVal
+				$oSelf.bboxTop = $eachVal
 			Case 5
-				$right = $eachVal
+				$oSelf.bboxRight = $eachVal
 			Case 6
-				$bottom = $eachVal
+				$oSelf.bboxBottom = $eachVal
 		EndSwitch
 	Next
 
-	Local $bbox = ObjCreate("Scripting.Dictionary")
-    $bbox.Add("left",   $left)
-    $bbox.Add("top",    $top)
-    $bbox.Add("right",  $right)
-    $bbox.Add("bottom", $bottom)
-    $bbox.Add("width",  $right - $left)
-    $bbox.Add("height", $bottom - $top)
-
-    Return $bbox
-
+	$oSelf.bboxWidth = $oSelf.bboxRight - $oSelf.bboxLeft
+	$oSelf.bboxHeight = $oSelf.bboxBottom - $oSelf.bboxTop
+	$oSelf.bboxCenterX = ($oSelf.bboxLeft + $oSelf.bboxRight) / 2
+	$oSelf.bboxCenterY = ($oSelf.bboxTop + $oSelf.bboxBottom) / 2
 EndFunc
 
 Func _CDP_Locator_Screenshot($oSelf)
@@ -1652,8 +1606,6 @@ EndFunc
 
 Func _CDP_Test_Data_Get($oSelf, $sFieldName)
 ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $sFieldName = ' & $sFieldName & @CRLF & '>Error code: ' & @error & @CRLF)
-
-
 EndFunc
 
 Func teststep($text)
@@ -1684,7 +1636,6 @@ Func _CDP_Test_Step_Expect($oSelf, $subject, $text = "")
     _AutoItObject_AddProperty($obj, "text", $ELSCOPE_PUBLIC, $text)
 
 	; Add locator-based expect methods
-
     _AutoItObject_AddMethod($obj, "toBeVisible", "_CDP_Expect_Locator_ToBeVisible")							; done - Uses isVisible()
     _AutoItObject_AddMethod($obj, "toBeHidden", "_CDP_Expect_Locator_ToBeHidden")							; done - Uses isHidden()
     _AutoItObject_AddMethod($obj, "toBeEnabled", "_CDP_Expect_Locator_ToBeEnabled")							; done - Uses isEnabled()
@@ -1699,7 +1650,6 @@ Func _CDP_Test_Step_Expect($oSelf, $subject, $text = "")
     _AutoItObject_AddMethod($obj, "toHaveJSProperty", "_CDP_Expect_Locator_ToHaveJSProperty")				; todo
 
 	; Add value-based expect methods
-
 	_AutoItObject_AddMethod($obj, "toBe", "_CDP_Expect_Value_ToBe")											; done
 	_AutoItObject_AddMethod($obj, "toEqual", "_CDP_Expect_Value_ToEqual")									; todo
 	_AutoItObject_AddMethod($obj, "toStrictEqual", "_CDP_Expect_Value_ToStrictEqual")						; todo
