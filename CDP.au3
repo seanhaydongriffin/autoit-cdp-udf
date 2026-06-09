@@ -41,7 +41,8 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 #region --- Initialization ---
 
 _CSV_Initialise()
-_JsonC_Startup("json-c.dll")
+;_JsonC_Startup("json-c.dll")
+_JsonC_Startup()
 _AutoItObject_Startup()
 
 Local $cdpState = _AutoItObject_Create()
@@ -571,7 +572,7 @@ Func __CDP_Browser_Connect($port)
 
 	$jResp = $api.get('http://localhost:' & $port & '/json/version')
 	Local $browserWsUrl = $jResp.body.get("webSocketDebuggerUrl").value()
-	
+
 	If $browserWsUrl = Null Then
 		ConsoleWrite("No browser WebSocket found" & @CRLF)
 		Return
