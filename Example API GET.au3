@@ -10,7 +10,7 @@ With test("Simple API GET test")
 	$step = teststep("Get all items as json")
 		$jHeaderData = _JsonC_Object().add("Accept", "application/json")
 		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items', $jHeaderData)
-		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/json")
+		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/json", "application/json")
 
 		$items = $jResp.body.get("items")
 		For $i = 0 to $items.count() - 1
@@ -22,7 +22,7 @@ With test("Simple API GET test")
 		$jHeaderData = _JsonC_Object().add("Accept", "application/xml")
 		$jOptions = _JsonC_Object().add("username", "").add("password", "").add("proxy", "").add("timeout", 30).add("followRedirects", True).add("cookieFile", "cookies.txt").add("caInfo", "curl-ca-bundle.crt").add("sslVerifyPeer", False)
 		$jResp = $api.get('https://apichallenges.eviltester.com/simpleapi/items', $jHeaderData, $jOptions)
-		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/xml")
+		ExpectedResponse($step, $jResp, 200, "OK", "content-type: application/xml", "application/xml")
 	$step = 0
 
 	$step = teststep("Get items of type 'cd'")
@@ -40,13 +40,13 @@ With test("Simple API GET test")
 
 EndWith
 
-Func ExpectedResponse($step, $jResp, $expectedStatus, $expectedStatusText, $headerText)
+Func ExpectedResponse($step, $jResp, $expectedStatus, $expectedStatusText, $headerText, $contentType)
 	$step.expect($jResp.status.value(), "Status").toBe($expectedStatus, @ScriptLineNumber)
 	$step.expect($jResp.statusText.value(), "Status Text").toBe($expectedStatusText, @ScriptLineNumber)
 	$step.expect($jResp.headers.value(), "Headers").toContain($headerText, @ScriptLineNumber)
 	if $jResp.body.type() = "string" Then ConsoleWrite("      > Body: " & $jResp.body.value() & @CRLF)
 	if $jResp.body.type() = "object" Then ConsoleWrite("      > Body: " & $jResp.body.toString() & @CRLF)
-	$step.expect($jResp.contentType.value(), "Content Type").toBe("application/json", @ScriptLineNumber)
+	$step.expect($jResp.contentType.value(), "Content Type").toBe($contentType, @ScriptLineNumber)
 EndFunc
 
 Func LogItem($item)
