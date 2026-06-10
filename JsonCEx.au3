@@ -186,14 +186,9 @@ Func _JsonC_Array_Remove($self, $index)
 EndFunc
 
 Func _JsonC_Array_At($self, $index)
-    if $self.size > 1 Then
-        Local $i = 0
-        For $Element In $self
-            If $i = $index Then Return $Element
-            $i += 1
-        next
-    EndIf
-    Return _JsonC_Object(_JsonC_ObjectArrayGetIndex($self.handle, $index))
+	$obj = _JsonC_ObjectArrayGetIndex($self.handle, $index)
+    if _JsonC_ObjectGetType($obj) = $JSONC_TYPE_ARRAY Then return _JsonC_Array($obj)
+    return _JsonC_Object($obj)
 EndFunc
 
 Func _JsonC_Array_Count($self)
