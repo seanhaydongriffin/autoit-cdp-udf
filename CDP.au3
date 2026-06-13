@@ -980,12 +980,12 @@ Func _CDP_Page_Locator($oSelf, $selector)
 
 			; Add action methods
 			_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
-			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; partially done - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent, Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; todo - Reqs CDP Commands same as click (twice)
-			_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
+			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; done
+			_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; done
+			_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done
 			_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")											; todo - Reqs CDP Commands Input.dispatchTouchEvent
-			_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; done - Reqs CDP Commands DOM.focus, Input.insertText, Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "type", "_CDP_Locator_Type")											; todo - Reqs CDP Commands Input.dispatchKeyEvent
+			_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; done
+			_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")									; done
 			_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")										; todo - Reqs CDP Commands Input.dispatchKeyEvent
 			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; todo - Reqs CDP Commands Runtime.callFunctionOn, Input.dispatchMouseEvent
 			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; todo - Reqs CDP Commands Runtime.callFunctionOn, Input.dispatchMouseEvent
@@ -997,18 +997,18 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
 			_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo - Reqs CDP Commands DOM.setFileInputFiles
 			_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo - Reqs CDP Commands DOM.dispatchEvent
-			_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done - Reqs CDP Commands DOM.scrollIntoView, Runtime.callFunctionOn
+			_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done
 			_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
 
 			; Add getter methods
-			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")			; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done - Reqs CDP Commands Runtime.callFunctionOn
+			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done
+			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done
+			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done
+			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")			; done
+			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done
+			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done
+			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done
+			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done
 			_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")							; todo - Reqs CDP Commands DOM.getBoxModel
 			_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")								; todo - Reqs CDP Commands DOM.getBoxModel, Page.captureScreenshot
 			_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")									; todo - Reqs CDP Commands Runtime.callFunctionOn
@@ -1019,12 +1019,12 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")										; todo - Reqs CDP Commands DOM.querySelectorAll
 
 			; Add state methods
-			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done - Reqs CDP Commands Runtime.callFunctionOn, DOM.getBoxModel
-			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done - Reqs CDP Commands same as isVisible
-			_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")								; done - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done - Reqs CDP Commands Runtime.callFunctionOn
+			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done
+			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done
+			_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done
+			_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")								; done
+			_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")								; done
+			_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done
 
 			; Add waiting methods
 			_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")									; todo - Reqs CDP Commands DOM.querySelector, Runtime.callFunctionOn, DOM.getBoxModel
@@ -1122,7 +1122,7 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")
 	_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")
 	_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")
-	_AutoItObject_AddMethod($oLocator, "type", "_CDP_Locator_Type")
+	_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")
 	_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")
 	_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")
 	_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")
@@ -1272,8 +1272,25 @@ Func _CDP_Locator_Fill($oSelf, $value)
 
 EndFunc
 
-Func _CDP_Locator_Type($oSelf)
-	; Todo
+Func _CDP_Locator_SendKeys($oSelf, $sText, $iDelay = 0)
+
+	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("objectId", $oSelf.objectId))
+	For $i = 1 To StringLen($sText)
+        Local $ch = StringMid($sText, $i, 1)
+        Local $keyCode = Asc($ch)
+		If StringRegExp($ch, "[A-Za-z0-9]") Then
+			; letters and digits → keyDown/keyUp
+			_CDP_SendCommand($oSelf, "Input.dispatchKeyEvent", _JsonC_Object().add("type", "keyDown").add("key", $ch).add("text", $ch).add("unmodifiedText", $ch).add("windowsVirtualKeyCode", $keyCode).add("nativeVirtualKeyCode", $keyCode))
+			_CDP_SendCommand($oSelf, "Input.dispatchKeyEvent", _JsonC_Object().add("type", "keyUp").add("key", $ch).add("text", $ch).add("windowsVirtualKeyCode", $keyCode).add("nativeVirtualKeyCode", $keyCode))
+		Else
+			; punctuation, unicode → char
+			_CDP_SendCommand($oSelf, "Input.dispatchKeyEvent", _JsonC_Object().add("type", "char").add("text", $ch))
+		EndIf
+        ; Optional delay
+        If $iDelay > 0 Then Sleep($iDelay)
+    Next
+    Return $oSelf
+
 EndFunc
 
 Func _CDP_Locator_Press($oSelf)
