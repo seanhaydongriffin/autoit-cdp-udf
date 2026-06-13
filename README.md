@@ -175,7 +175,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``innerHTML()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 | ``inputValue()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 | ``getAttribute()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
-| ``boundingBox()`` | ❌ | ✔️ | DOM.getBoxModel |
+| ``boundingBox()`` | ✔️ | ✔️ | DOM.getBoxModel |
 | ``screenshot()`` | ❌ | ✔️ | DOM.getBoxModel<br>Page.captureScreenshot |
 | ``evaluate()`` | ❌ | ✔️ | Runtime.callFunctionOn |
 | ``evaluateAll()`` | ❌ | ✔️ | Runtime.callFunctionOn |
