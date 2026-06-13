@@ -283,9 +283,14 @@ Try the following examples from the main folder that demonstrate the UDF functio
 | Example Playwright Headless Chrome.au3 | Basic Web Page test using optionally installed Playwright Chromium Headless Shell |
 | Example Element Attributes.au3 | Test of web element attributes |
 | Example Element Attributes Debug.au3 | Test of web element attributes with debugging enabled |
+| Example Multiple Chrome Tabs.au3 | Test of multiple tabs / pages |
 | Example Multiple Elements.au3 | Test of multiple web elements |
 | Example Basic Inputs.au3 | Test of basic HTML input elements |
 | Example Number Inputs.au3 | Test of numeric HTML input elements |
+| Example Text Inputs.au3 | Test of text-based HTML input elements |
+| Example API GET.au3 | Test of HTTP GET requests |
+| Example API POST.au3 | Test of HTTP POST requests |
+| Example API DELETE.au3 | Test of HTTP DELETE requests |
 
 ### Example script
 
