@@ -148,7 +148,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``hover()`` | ✔️ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``tap()`` | ❌ | ✔️ | Input.dispatchTouchEvent |
 | ``fill()`` | ✔️ | ✔️ | DOM.focus<br>Input.insertText<br>Runtime.callFunctionOn |
-| ``type()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
+| ``sendKeys()`` | ✔️ | ✔️ | Input.dispatchKeyEvent |
 | ``press()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
 | ``check()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
 | ``uncheck()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
