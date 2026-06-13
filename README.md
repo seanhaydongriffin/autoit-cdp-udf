@@ -143,7 +143,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 
 | Feature name | CDP UDF | Playwright | CDP Commands |
 | --- | --- | --- | --- |
-| ``click()`` | ✔️¹ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
+| ``click()`` | ✔️ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent<br>Runtime.callFunctionOn |
 | ``dblclick()`` | ✔️ | ✔️ | same as click (twice) |
 | ``hover()`` | ✔️ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``tap()`` | ❌ | ✔️ | Input.dispatchTouchEvent |
@@ -162,8 +162,6 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``dispatchEvent()`` | ❌ | ✔️ | DOM.dispatchEvent |
 | ``scrollIntoView()`` | ✔️ | ✔️ | DOM.scrollIntoView<br>Runtime.callFunctionOn |
 | ``scrollIntoViewIfNeeded()`` | ❌ | ✔️ | DOM.scrollIntoViewIfNeeded<br>Runtime.callFunctionOn |
-
-¹ partially done
 
 ### Locator Getter Methods
 
