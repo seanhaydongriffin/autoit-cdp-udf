@@ -39,6 +39,16 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='button-input-key-value']")).toHaveText("", @ScriptLineNumber)
 		EndWith
 
+		$page.locator("//input[@id='button-input']").dblClick()
+
+		With teststep("State after double click")
+			.expect($page.locator("//span[@id='button-input-type-value']")).toHaveText("button", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='button-input-value-value']")).toHaveText("A Button", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='button-input-id-value']")).toHaveText("button-input", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("dblclick", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='button-input-key-value']")).toHaveText("", @ScriptLineNumber)
+		EndWith
+
 	EndWith
 
 	With teststep("Verify the checkbox")

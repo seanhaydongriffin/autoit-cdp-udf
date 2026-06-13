@@ -191,8 +191,8 @@ Func _CDP_RecvLoop()
             EndIf
 
             ; Any other error
-            If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & @error & @CRLF)
-            __CDP_RemoveBrowserState($wsPort)
+            ;If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & @error & @CRLF)
+            ;__CDP_RemoveBrowserState($wsPort)
             ContinueLoop
         EndIf
 
@@ -372,7 +372,7 @@ EndFunc
 
 Func _CDP_Api_Post($oSelf, $sUrl, $vPostData, $oHeaderData = Null, $jOptions = Null)
 
-	$vPostData = $vPostData.handle
+	if IsString($vPostData) = False Then $vPostData = $vPostData.handle
 	Local $oHeaderList = Null, $sContentType = Null
 	if $oHeaderData <> Null Then
 		$oHeaderData = $oHeaderData.handle
@@ -726,6 +726,7 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddMethod($oPage, "bringToFront",	"_CDP_Page_BringToFront")
     _AutoItObject_AddMethod($oPage, "setContent",	"_CDP_Page_SetContent")
     _AutoItObject_AddMethod($oPage, "waitForLoad", 	"_CDP_WaitForLoad")
+    _AutoItObject_AddMethod($oPage, "screenshot",  	"_CDP_Page_Screenshot")
 
 	; Add getter methods
 	_AutoItObject_AddMethod($oPage, "url",      	"_CDP_Page_Url")
@@ -818,6 +819,15 @@ Func _CDP_Page_ViewportSize($oSelf)
     $a[1] = $layoutViewport.get("clientHeight").value()
     Return $a
 
+EndFunc
+
+Func _CDP_Page_Screenshot($oSelf, $sPath, $bFullPage = True)
+    Local $resp = _CDP_SendSync($oSelf, "Page.captureScreenshot", _JsonC_Object().add("format", "png").add("captureBeyondViewport", True))
+	Local $data = _JsonC_Object($resp).get("result").get("data").value()
+	Local $bPng = __CDP_Base64Decode($data)
+	Local $hFile = FileOpen($sPath, 18) ; 18 = binary mode
+	FileWrite($hFile, $bPng)
+	FileClose($hFile)
 EndFunc
 
 Func __CDP_Perform_Search($selector)
@@ -1060,7 +1070,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
     WEnd
 
 	ConsoleWrite("Timed out." & @CRLF)
-	Exit
+	Return Null
 
 EndFunc
 
@@ -1106,6 +1116,7 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	Local $oExpect = _AutoItObject_Create()
 
 	; Add action methods
+	_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
 	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
 	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")
 	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")
@@ -1171,7 +1182,20 @@ Func _CDP_Page_LocatorNow($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")
 
 	; Add properties
+	_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
+	_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
+	_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
+	_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
 	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
+	_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, 0)
+	_AutoItObject_AddProperty($oLocator, "bboxLeft", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxTop", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxRight", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxBottom", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxWidth", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxHeight", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxCenterX", $ELSCOPE_PUBLIC, -1)
+	_AutoItObject_AddProperty($oLocator, "bboxCenterY", $ELSCOPE_PUBLIC, -1)
 	_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
 
 	Return $oLocator
@@ -1204,20 +1228,28 @@ Func _CDP_Locator_ObjectToNode($oSelf)
 	Return False
 EndFunc
 
-
-
-
-
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
-    _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.click(); }").add("awaitPromise", False))
+	_CDP_Locator_ScrollIntoView($oSelf)
+    _CDP_Locator_BoundingBox($oSelf)
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
 	return $oSelf
 
 EndFunc
 
 Func _CDP_Locator_DoubleClick($oSelf, $waitForLoad = False)
-	; Todo
+
+	_CDP_Locator_ScrollIntoView($oSelf)
+    _CDP_Locator_BoundingBox($oSelf)
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 2).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 2).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
+	return $oSelf
+
 EndFunc
 
 Func _CDP_Locator_Hover($oSelf)
@@ -1301,8 +1333,8 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
     Local $lastLeft = -1, $lastTop = -1
 
     While TimerDiff($t) < $timeout
-        Local $box = _CDP_Locator_BoundingBox($oSelf)
-        If @error Then Return SetError(1,0,False)
+        _CDP_Locator_BoundingBox($oSelf)
+        ;If @error Then Return SetError(1,0,False)
         
 		; If position hasn't changed for 2 consecutive checks → stable
         If $oSelf.bboxLeft = $lastLeft And $oSelf.bboxTop = $lastTop Then Return True
@@ -1394,7 +1426,7 @@ Func _CDP_Locator_BoundingBox($oSelf)
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 	if $resp = Null Then Return SetError(2, 0, "No box model")
 	Local $borderObj = _JsonC_Object($resp).get("result").get("model").get("border")
-	if $borderObj = Null then ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $borderObj = ' & $borderObj & @CRLF & '>Error code: ' & @error & @CRLF)
+	if $borderObj = Null or IsObj($borderObj) = False then Return SetError(2, 0, "No box model")
 
 	Local $left, $right, $top, $bottom, $loop_num = 0
 	For $i = 0 to $borderObj.count() - 1
@@ -2107,6 +2139,42 @@ EndFunc
 Func ErrFunc($oError)
 	ConsoleWrite("!>COM Error !"&@CRLF&"!>"&@TAB&"Number: "&Hex($oError.Number,8)&@CRLF&"!>"&@TAB&"Windescription: "&StringRegExpReplace($oError.windescription,"\R$","")&@CRLF&"!>"&@TAB&"Source: "&$oError.source&@CRLF&"!>"&@TAB&"Description: "&$oError.description&@CRLF&"!>"&@TAB&"Helpfile: "&$oError.helpfile&@CRLF&"!>"&@TAB&"Helpcontext: "&$oError.helpcontext&@CRLF&"!>"&@TAB&"Lastdllerror: "&$oError.lastdllerror&@CRLF&"!>"&@TAB&"Scriptline: "&$oError.scriptline&@CRLF)
 EndFunc   ;==>ErrFunc
+
+Func __CDP_Base64Decode($input_string)
+
+    Local $struct = DllStructCreate("int")
+
+    Local $a_Call = DllCall("Crypt32.dll", "int", "CryptStringToBinary", _
+            "str", $input_string, _
+            "int", 0, _
+            "int", 1, _
+            "ptr", 0, _
+            "ptr", DllStructGetPtr($struct, 1), _
+            "ptr", 0, _
+            "ptr", 0)
+
+    If @error Or Not $a_Call[0] Then
+        Return SetError(1, 0, "") ; error calculating the length of the buffer needed
+    EndIf
+
+    Local $a = DllStructCreate("byte[" & DllStructGetData($struct, 1) & "]")
+
+    $a_Call = DllCall("Crypt32.dll", "int", "CryptStringToBinary", _
+            "str", $input_string, _
+            "int", 0, _
+            "int", 1, _
+            "ptr", DllStructGetPtr($a), _
+            "ptr", DllStructGetPtr($struct, 1), _
+            "ptr", 0, _
+            "ptr", 0)
+
+    If @error Or Not $a_Call[0] Then
+        Return SetError(2, 0, ""); error decoding
+    EndIf
+
+    Return DllStructGetData($a, 1)
+
+EndFunc
 
 #endregion
 
