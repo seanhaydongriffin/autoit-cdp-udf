@@ -150,8 +150,8 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``fill()`` | ✔️ | ✔️ | DOM.focus<br>Input.insertText<br>Runtime.callFunctionOn |
 | ``sendKeys()`` | ✔️ | ✔️ | Input.dispatchKeyEvent |
 | ``press()`` | ❌ | ✔️ | Input.dispatchKeyEvent |
-| ``check()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
-| ``uncheck()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
+| ``check()`` | ✔️ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
+| ``uncheck()`` | ✔️ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
 | ``setChecked()`` | ❌ | ✔️ | ?
 | ``selectOption()`` | ❌ | ✔️ | Runtime.callFunctionOn<br>DOM.dispatchEvent |
 | ``focus()`` | ❌ | ✔️ | DOM.focus |
