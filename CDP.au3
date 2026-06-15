@@ -21,9 +21,8 @@ FileInstall(".\selenium-manager.exe", ".\")
 #include <Array.au3>
 #include <String.au3>
 #include <WinAPIProc.au3>
+#include "JsonCEx.au3" ; this includes "AutoItObject.au3"
 #include "CurlEx.au3"
-#include "JsonC.au3"
-#include "AutoItObject.au3"
 #include "CSV.au3"
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
@@ -54,6 +53,7 @@ _AutoItObject_AddProperty($cdpConfig, "timeout", 			$ELSCOPE_PUBLIC, 5000)
 _AutoItObject_AddProperty($cdpConfig, "debug", 				$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "infoPopups", 		$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", 		$ELSCOPE_PUBLIC, False)
+_AutoItObject_AddProperty($cdpConfig, "enterpriseMode", 	$ELSCOPE_PUBLIC, False)
 
 Global $cdpBrowser = _AutoItObject_Create()
 _AutoItObject_AddMethod($cdpBrowser, "exists", 				"_CDP_Browser_Exists")
@@ -1231,7 +1231,6 @@ EndFunc
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
 	_CDP_Locator_ScrollIntoView($oSelf)
-    _CDP_Locator_BoundingBox($oSelf)
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
@@ -1351,7 +1350,7 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
 
     While TimerDiff($t) < $timeout
         _CDP_Locator_BoundingBox($oSelf)
-        ;If @error Then Return SetError(1,0,False)
+        If @error Then ContinueLoop ; Return SetError(1,0,False)
         
 		; If position hasn't changed for 2 consecutive checks → stable
         If $oSelf.bboxLeft = $lastLeft And $oSelf.bboxTop = $lastTop Then Return True
@@ -1443,7 +1442,10 @@ Func _CDP_Locator_BoundingBox($oSelf)
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 	if $resp = Null Then Return SetError(2, 0, "No box model")
 	Local $borderObj = _JsonC_Object($resp).get("result").get("model").get("border")
-	if $borderObj = Null or IsObj($borderObj) = False then Return SetError(2, 0, "No box model")
+	if $borderObj = Null or IsObj($borderObj) = False then 
+		$oSelf.nodeId = 0
+		Return SetError(2, 0, "No box model")
+	EndIf
 
 	Local $left, $right, $top, $bottom, $loop_num = 0
 	For $i = 0 to $borderObj.count() - 1
@@ -1613,15 +1615,30 @@ EndFunc
 
 #region --- Test Class ---
 
+#cs
 Func _CDP_Test($oSelf, $text)
-    __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
+
+	$text = "▶ Test: " & $text & @CRLF
+    if $cdp.config.enterpriseMode = False Then 
+		__CDP_ConsoleWriteUTF8($text)
+	Else
+	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $text = ' & $text & @CRLF & '>Error code: ' & @error & @CRLF)
+		__CDP_ConsoleWriteUTF8Enterprise($text)
+	EndIf
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 	Return $oSelf
 EndFunc
+#ce
 
 Func test($text)
 
-    __CDP_ConsoleWriteUTF8("▶ Test: " & $text & @CRLF)
+	$text = "▶ 🧪 " & $text & @CRLF
+    if $cdp.config.enterpriseMode = False Then 
+		__CDP_ConsoleWriteUTF8($text)
+	Else
+		__CDP_ConsoleWriteUTF8Enterprise($text)
+	EndIf
+
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
 	; get the test environment from a release datapool if it exists
@@ -1660,7 +1677,13 @@ EndFunc
 
 Func teststep($text)
 
-	__CDP_ConsoleWriteUTF8(_StringRepeat("  ", $cdp.state.indentLevel) & "▶ Step: " & $text & @CRLF)
+	$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 👣 " & $text & @CRLF
+    if $cdp.config.enterpriseMode = False Then 
+		__CDP_ConsoleWriteUTF8($text)
+	Else
+		__CDP_ConsoleWriteUTF8Enterprise($text)
+	EndIf
+
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
 	Local $teststep = _AutoItObject_Create()
@@ -1793,15 +1816,15 @@ Func _CDP_Expect_Locator_ToBeChecked($oSelf, $scriptLineNumber = "")
 
 EndFunc
 
-Func _CDP_Expect_Locator_ToHaveText($oSelf, $expected, $scriptLineNumber = "")
+Func _CDP_Expect_Locator_ToHaveText($oSelf, $expected, $sLine = "")
 
 	;if $oSelf.text = "" Then $oSelf.text = ""
 	Local $actual = _CDP_Locator_TextContent($oSelf.subject)
 	If $actual = $expected Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "]", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "]", $sLine)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to have [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to have [" & $expected & "] but got [" & $actual & "]", $sLine)
     Return False
 EndFunc
 
@@ -2148,11 +2171,6 @@ Func __CDP_ExtractBrowserPath($text)
     Return SetError(1, 0, "")
 EndFunc
 
-Func __CDP_ConsoleWriteUTF8($sText)
-	; ChrW(0x200B) enforces unicode fallback fonts in windows console
-    ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
-EndFunc
-
 Func ErrFunc($oError)
 	ConsoleWrite("!>COM Error !"&@CRLF&"!>"&@TAB&"Number: "&Hex($oError.Number,8)&@CRLF&"!>"&@TAB&"Windescription: "&StringRegExpReplace($oError.windescription,"\R$","")&@CRLF&"!>"&@TAB&"Source: "&$oError.source&@CRLF&"!>"&@TAB&"Description: "&$oError.description&@CRLF&"!>"&@TAB&"Helpfile: "&$oError.helpfile&@CRLF&"!>"&@TAB&"Helpcontext: "&$oError.helpcontext&@CRLF&"!>"&@TAB&"Lastdllerror: "&$oError.lastdllerror&@CRLF&"!>"&@TAB&"Scriptline: "&$oError.scriptline&@CRLF)
 EndFunc   ;==>ErrFunc
@@ -2192,6 +2210,36 @@ Func __CDP_Base64Decode($input_string)
     Return DllStructGetData($a, 1)
 
 EndFunc
+
+Func __CDP_ConsoleWriteUTF8($sText)
+	; ChrW(0x200B) enforces unicode fallback fonts in windows console
+    ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
+EndFunc
+
+Func __CDP_ConsoleWriteUTF8Enterprise($sText)
+	__CDP_ConsoleWriteUTF8(StringFormat("[%i-%02i-%02i %02i꞉%02i꞉%02i] %s", @YEAR, @MON, @MDAY, @HOUR, @MIN, @SEC, $sText))
+EndFunc
+
+; Override for __Au3Obj_FunctionProxy from AutoItObject.au3
+Func __Au3Obj_FunctionProxy($FuncName, $oSelf) ; allows binary code to call autoit functions
+	Local $arg = $oSelf.__params__ ; fetch params
+	
+	Local $testLogIndex = _ArraySearch($arg, " called <AutoItObject $FuncName> ", 0, 0, 1, 1)
+	if $testLogIndex > -1 Then 
+		$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 🔧 " & StringReplace($arg[$testLogIndex], "<AutoItObject $FuncName>", $FuncName) & @CRLF
+		if $cdp.config.enterpriseMode = True Then __CDP_ConsoleWriteUTF8Enterprise($text)
+		_ArrayDelete($arg, $testLogIndex)
+	EndIf
+	
+	If IsArray($arg) Then
+		Local $ret = Call($FuncName, $arg) ; Call
+		If @error = 0xDEAD And @extended = 0xBEEF Then Return 0
+		$oSelf.__error__ = @error ; set error
+		$oSelf.__result__ = $ret ; set result
+		Return 1
+	EndIf
+	; return error when params-array could not be created
+EndFunc   ;==>__Au3Obj_FunctionProxy
 
 #endregion
 

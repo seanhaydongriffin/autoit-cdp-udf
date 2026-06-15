@@ -1,5 +1,5 @@
 #include-once
-#include <AutoItObject.au3>
+#include "AutoItObject.au3"
 #include "JsonC.au3"
 
 #region --- Object ---

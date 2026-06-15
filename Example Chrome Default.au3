@@ -15,6 +15,12 @@ $chrome.close()
 $fDiff = TimerDiff($hTimer)
 ConsoleWrite(@CRLF & "> BasicWebPageWithStandardBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
 
+Func testlog($iLine = @ScriptLineNumber)
+	Return $iLine
+EndFunc
+
+Global $fred
+
 Func BasicWebPageTest($chrome, $page)
 
 	With test("Basic web page test")

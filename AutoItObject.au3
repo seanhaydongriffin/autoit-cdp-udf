@@ -33,7 +33,8 @@
 ;
 ; ===============================================================================================================================
 #include-once
-#AutoIt3Wrapper_Au3Check_Parameters=-d -w 1 -w 2 -w 3 -w 4 -w 5 -w 6
+#include <Array.au3>
+#include <String.au3>
 
 
 ; #CURRENT# =====================================================================================================================
@@ -556,8 +557,11 @@ EndFunc   ;==>__Au3Obj_PtrStringRead
 ;--------------------------------------------------------------------------------------------------------------------------------------
 #Region Proxy Functions
 
+#cs
+; overridden in CDP.au3
 Func __Au3Obj_FunctionProxy($FuncName, $oSelf) ; allows binary code to call autoit functions
 	Local $arg = $oSelf.__params__ ; fetch params
+	
 	If IsArray($arg) Then
 		Local $ret = Call($FuncName, $arg) ; Call
 		If @error = 0xDEAD And @extended = 0xBEEF Then Return 0
@@ -567,6 +571,7 @@ Func __Au3Obj_FunctionProxy($FuncName, $oSelf) ; allows binary code to call auto
 	EndIf
 	; return error when params-array could not be created
 EndFunc   ;==>__Au3Obj_FunctionProxy
+#ce
 
 Func __Au3Obj_EnumFunctionProxy($iAction, $FuncName, $oSelf, $pVarCurrent, $pVarResult)
 	Local $Current, $ret

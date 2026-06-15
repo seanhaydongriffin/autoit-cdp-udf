@@ -57,15 +57,18 @@ EndFunc
 ;
 ; ;==========================================================================================
 Func _CSV_Open($csv_file)
-
 	Local $sOut, $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
 	_PathSplit($csv_file, $sDrive, $sDir, $sFileName, $sExtension)
 	Local $csv_handle = @TempDir & "\" & $sFileName & ".db"
 	FileDelete($csv_handle)
-	_SQLite_SQLiteExe($csv_handle, ".mode csv" & @CRLF & ".import '" & $csv_file & "' csv", $sOut)
+	Local $csv_file_fwd = StringReplace($csv_file, "\", "/")
+	Local $sqlite = @ScriptDir & "\sqlite3.exe"
+	Local $cmd = '"' & $sqlite & '" "' & $csv_handle & '" -cmd ".mode csv" -cmd ".import ''' & $csv_file_fwd & ''' csv"'
+	Local $pid = Run($cmd, @ScriptDir, @SW_HIDE, $STDOUT_CHILD + $STDERR_MERGED)
+	ProcessWaitClose($pid)
+	Local $output = StdoutRead($pid)
 	Return $csv_handle
 EndFunc
-
 
 ; #FUNCTION# ;===============================================================================
 ;

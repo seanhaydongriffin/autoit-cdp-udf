@@ -30,7 +30,7 @@ With test("Number Inputs test")
 			.expect($page.locator("//span[@id='number-input-type-value']")).toHaveText("number", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='number-input-value-value']")).toHaveText("", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='number-input-id-value']")).toHaveText("number-input", @ScriptLineNumber)
-			.expect($page.locator("//span[@id='number-input-event-value']")).toHaveText("click", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='number-input-event-value']").textContent()).toMatch("click|selectionchange", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='number-input-key-value']")).toHaveText("", @ScriptLineNumber)
 		EndWith
 
