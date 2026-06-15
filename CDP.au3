@@ -1,5 +1,4 @@
 #AutoIt3Wrapper_UseX64=y
-FileInstall(".\json-c.dll", ".\")
 FileInstall(".\libcurl-x64.dll", ".\")
 FileInstall(".\selenium-manager.exe", ".\")
 
@@ -361,7 +360,7 @@ Func _CDP_Api_Get($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
 	if $oHeaderData <> Null Then
 		$oHeaderData = $oHeaderData.handle
 	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
 	EndIf
 
 	; call curl get
@@ -377,7 +376,7 @@ Func _CDP_Api_Post($oSelf, $sUrl, $vPostData, $oHeaderData = Null, $jOptions = N
 	if $oHeaderData <> Null Then
 		$oHeaderData = $oHeaderData.handle
 	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
 	EndIf
 	If StringInStr($sContentType, "application/json") And IsString($vPostData) = False Then $vPostData = _JsonC_ObjectToJsonString($vPostData)
 
@@ -393,7 +392,7 @@ Func _CDP_Api_Delete($oSelf, $sUrl, $oHeaderData = Null, $jOptions = Null)
 	if $oHeaderData <> Null Then
 		$oHeaderData = $oHeaderData.handle
 	    If IsString($oHeaderData) Then $oHeaderData = _JsonC_TokenerParse($oHeaderData)
-		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)		
+		if $oHeaderData <> Null Then $oHeaderList = Curl_BuildHeaderSlist($oHeaderData, $sContentType)
 	EndIf
 
 	; call curl get
@@ -545,7 +544,7 @@ EndFunc
 
 
 Func _CDP_Browser_GetDefaultTabTargetId($oSelf)
-	
+
     Local $resp = _CDP_SendSync($oSelf, "Target.getTargets")
     Local $resultObj = _JsonC_ObjectObjectGet($resp, "result")
     Local $targetInfosObj = _JsonC_ObjectObjectGet($resultObj, "targetInfos")
@@ -854,7 +853,7 @@ Func __CDP_Perform_Search($selector)
 
 EndFunc
 
-#cs 
+#cs
 
 Func __CDP_Object_To_Node($oSelf)
 
@@ -1215,7 +1214,7 @@ Func _CDP_Locator_ObjectToNode($oSelf)
 		Local $resp = _CDP_SendSync($oSelf, "DOM.requestNode", _JsonC_Object().add("objectId", $oSelf.objectId))
 		;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : TimerDiff($hStarttime) = ' & TimerDiff($hStarttime) & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
 		Local $nodeIdVal = _JsonC_Object($resp).get("result").get("nodeId").value()
-		if $nodeIdVal <> 0 Then 
+		if $nodeIdVal <> 0 Then
 			$oSelf.nodeId = $nodeIdVal
 			Return True
 		EndIf
@@ -1351,7 +1350,7 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
     While TimerDiff($t) < $timeout
         _CDP_Locator_BoundingBox($oSelf)
         If @error Then ContinueLoop ; Return SetError(1,0,False)
-        
+
 		; If position hasn't changed for 2 consecutive checks → stable
         If $oSelf.bboxLeft = $lastLeft And $oSelf.bboxTop = $lastTop Then Return True
 
@@ -1442,7 +1441,7 @@ Func _CDP_Locator_BoundingBox($oSelf)
     Local $resp = _CDP_SendSync($oSelf, "DOM.getBoxModel", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 	if $resp = Null Then Return SetError(2, 0, "No box model")
 	Local $borderObj = _JsonC_Object($resp).get("result").get("model").get("border")
-	if $borderObj = Null or IsObj($borderObj) = False then 
+	if $borderObj = Null or IsObj($borderObj) = False then
 		$oSelf.nodeId = 0
 		Return SetError(2, 0, "No box model")
 	EndIf
@@ -1619,7 +1618,7 @@ EndFunc
 Func _CDP_Test($oSelf, $text)
 
 	$text = "▶ Test: " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then 
+    if $cdp.config.enterpriseMode = False Then
 		__CDP_ConsoleWriteUTF8($text)
 	Else
 	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $text = ' & $text & @CRLF & '>Error code: ' & @error & @CRLF)
@@ -1633,7 +1632,7 @@ EndFunc
 Func test($text)
 
 	$text = "▶ 🧪 " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then 
+    if $cdp.config.enterpriseMode = False Then
 		__CDP_ConsoleWriteUTF8($text)
 	Else
 		__CDP_ConsoleWriteUTF8Enterprise($text)
@@ -1656,18 +1655,18 @@ Func testdata($poolName, $recordKey, $testKey = "") ; $fieldName = Default, $key
 
 	Local $csv_handle
 
-	if $poolName = "Environment" then 
+	if $poolName = "Environment" then
 		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
-		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")	
+		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")
 	EndIf
 
-	if $poolName = "Release" then 
+	if $poolName = "Release" then
 		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $poolName & ".csv")
-		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")	
+		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")
 	EndIf
 
 	$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
-	Return _CSV_Query($csv_handle, "SELECT * FROM csv WHERE ""Comment 1"" = '" & $recordKey & "' AND ""Assigned to"" = '" & $testKey & "'")	
+	Return _CSV_Query($csv_handle, "SELECT * FROM csv WHERE ""Comment 1"" = '" & $recordKey & "' AND ""Assigned to"" = '" & $testKey & "'")
 
 EndFunc
 
@@ -1678,7 +1677,7 @@ EndFunc
 Func teststep($text)
 
 	$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 👣 " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then 
+    if $cdp.config.enterpriseMode = False Then
 		__CDP_ConsoleWriteUTF8($text)
 	Else
 		__CDP_ConsoleWriteUTF8Enterprise($text)
@@ -2223,14 +2222,14 @@ EndFunc
 ; Override for __Au3Obj_FunctionProxy from AutoItObject.au3
 Func __Au3Obj_FunctionProxy($FuncName, $oSelf) ; allows binary code to call autoit functions
 	Local $arg = $oSelf.__params__ ; fetch params
-	
+
 	Local $testLogIndex = _ArraySearch($arg, " called <AutoItObject $FuncName> ", 0, 0, 1, 1)
-	if $testLogIndex > -1 Then 
+	if $testLogIndex > -1 Then
 		$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 🔧 " & StringReplace($arg[$testLogIndex], "<AutoItObject $FuncName>", $FuncName) & @CRLF
 		if $cdp.config.enterpriseMode = True Then __CDP_ConsoleWriteUTF8Enterprise($text)
 		_ArrayDelete($arg, $testLogIndex)
 	EndIf
-	
+
 	If IsArray($arg) Then
 		Local $ret = Call($FuncName, $arg) ; Call
 		If @error = 0xDEAD And @extended = 0xBEEF Then Return 0
