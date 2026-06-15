@@ -1,6 +1,9 @@
 #AutoIt3Wrapper_UseX64=y
+FileInstall(".\curl-ca-bundle.crt", ".\")
 FileInstall(".\libcurl-x64.dll", ".\")
 FileInstall(".\selenium-manager.exe", ".\")
+FileInstall(".\sqlite3_x64.dll", ".\")
+FileInstall(".\sqlite3.exe", ".\")
 
 ; ======================================================================================================================
 ;   AutoIt CDP UDF
