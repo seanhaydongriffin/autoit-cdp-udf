@@ -1299,11 +1299,23 @@ Func _CDP_Locator_Press($oSelf)
 EndFunc
 
 Func _CDP_Locator_Check($oSelf)
-	; Todo
+
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
+	Local $isChecked = _JsonC_Object($resp).get("result").get("result").get("value").value()
+	If $isChecked Then Return $oSelf
+	$oSelf.click()
+	Return $oSelf
+
 EndFunc
 
 Func _CDP_Locator_Uncheck($oSelf)
-	; Todo
+
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
+	Local $isChecked = _JsonC_Object($resp).get("result").get("result").get("value").value()
+	If $isChecked = False Then Return $oSelf
+	$oSelf.click()
+	Return $oSelf
+
 EndFunc
 
 Func _CDP_Locator_SetChecked($oSelf)
@@ -1754,7 +1766,12 @@ Func _CDP_Test_Step_Expect_Msg($indent, $pass, $text, $lineNumber = "")
 	if $pass = False Then $result = "✗"
 	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
 
-    __CDP_ConsoleWriteUTF8($indent & $result & " Expect " & StringStripWS($text, 1) & $lineNumber & @CRLF)
+	$text = $indent & $result & " Expect " & StringStripWS($text, 1) & $lineNumber & @CRLF
+	if $cdp.config.enterpriseMode = True Then 
+		__CDP_ConsoleWriteUTF8Enterprise($text)
+	Else
+    	__CDP_ConsoleWriteUTF8($text)
+	EndIf
 EndFunc
 
 

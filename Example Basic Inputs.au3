@@ -68,15 +68,26 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 		EndWith
 
-		$page.locator("//input[@id='checkbox-input']").click()
+		$page.locator("//input[@id='checkbox-input']").check()
 
-		With teststep("State after click")
+		With teststep("State after check")
 			.expect($page.locator("//span[@id='checkbox-input-type-value']")).toHaveText("checkbox", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-value-value']")).toHaveText("on", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-id-value']")).toHaveText("checkbox-input", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("change", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-key-value']")).toHaveText("", @ScriptLineNumber)
 			.expect($page.locator("//span[@id='checkbox-input-checked-value']")).toHaveText("true", @ScriptLineNumber)
+		EndWith
+
+		$page.locator("//input[@id='checkbox-input']").uncheck()
+
+		With teststep("State after uncheck")
+			.expect($page.locator("//span[@id='checkbox-input-type-value']")).toHaveText("checkbox", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-value-value']")).toHaveText("on", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-id-value']")).toHaveText("checkbox-input", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("change", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-key-value']")).toHaveText("", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-checked-value']")).toHaveText("false", @ScriptLineNumber)
 		EndWith
 
 	EndWith
@@ -100,9 +111,9 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 			EndWith
 
-			$page.locator("//input[@id='radio-input-1']").click()
+			$page.locator("//input[@id='radio-input-1']").check()
 
-			With teststep("State after click")
+			With teststep("State after check")
 				.expect($page.locator("//span[@id='radio-input-1-type-value']")).toHaveText("radio", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-1-value-value']")).toHaveText("One", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-1-id-value']")).toHaveText("radio-input-1", @ScriptLineNumber)
@@ -130,9 +141,9 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 			EndWith
 
-			$page.locator("//input[@id='radio-input-2']").click()
+			$page.locator("//input[@id='radio-input-2']").check()
 
-			With teststep("State after click")
+			With teststep("State after check")
 				.expect($page.locator("//span[@id='radio-input-2-type-value']")).toHaveText("radio", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-2-value-value']")).toHaveText("Two", @ScriptLineNumber)
 				.expect($page.locator("//span[@id='radio-input-2-id-value']")).toHaveText("radio-input-2", @ScriptLineNumber)
