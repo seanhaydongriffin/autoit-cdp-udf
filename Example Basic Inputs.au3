@@ -141,7 +141,7 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 			EndWith
 
-			$page.locator("//input[@id='radio-input-2']").check()
+			$page.locator("//input[@id='radio-input-2']").setChecked(True)
 
 			With teststep("State after check")
 				.expect($page.locator("//span[@id='radio-input-2-type-value']")).toHaveText("radio", @ScriptLineNumber)

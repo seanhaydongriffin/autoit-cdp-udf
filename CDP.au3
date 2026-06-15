@@ -989,9 +989,9 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; done
 			_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")									; done
 			_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")										; todo - Reqs CDP Commands Input.dispatchKeyEvent
-			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; todo - Reqs CDP Commands Runtime.callFunctionOn, Input.dispatchMouseEvent
-			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; todo - Reqs CDP Commands Runtime.callFunctionOn, Input.dispatchMouseEvent
-			_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; todo - Reqs CDP Commands ?
+			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; done
+			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; done
+			_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; done
 			_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; todo - Reqs CDP Commands Runtime.callFunctionOn, DOM.dispatchEvent
 			_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; todo - Reqs CDP Commands DOM.focus
 			_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; todo - Reqs CDP Commands Runtime.callFunctionOn
@@ -1300,9 +1300,7 @@ EndFunc
 
 Func _CDP_Locator_Check($oSelf)
 
-    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
-	Local $isChecked = _JsonC_Object($resp).get("result").get("result").get("value").value()
-	If $isChecked Then Return $oSelf
+	If $oSelf.isChecked() Then Return $oSelf
 	$oSelf.click()
 	Return $oSelf
 
@@ -1310,20 +1308,27 @@ EndFunc
 
 Func _CDP_Locator_Uncheck($oSelf)
 
-    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
-	Local $isChecked = _JsonC_Object($resp).get("result").get("result").get("value").value()
-	If $isChecked = False Then Return $oSelf
+	If $oSelf.isChecked() = False Then Return $oSelf
 	$oSelf.click()
 	Return $oSelf
 
 EndFunc
 
-Func _CDP_Locator_SetChecked($oSelf)
-	; Todo
+Func _CDP_Locator_SetChecked($oSelf, $bState)
+
+	If $oSelf.isChecked() = $bState Then Return $oSelf
+	$oSelf.click()
+	Return $oSelf
+
 EndFunc
 
-Func _CDP_Locator_SelectOption($oSelf)
-	; Todo
+Func _CDP_Locator_SelectOption($oSelf, $value)
+
+	_CDP_Locator_ScrollIntoView($oSelf)
+    Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function(value) { const opt = Array.from(this.options).find(o => o.value === value || o.label === value); if (!opt) return false; this.value = opt.value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); return true; }").add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $value))).add("returnByValue", True))
+	;Return _JsonC_Object($resp).get("result").get("result").get("value").value()
+	Return $oSelf
+
 EndFunc
 
 Func _CDP_Locator_Focus($oSelf)
@@ -1839,7 +1844,7 @@ Func _CDP_Expect_Locator_ToHaveText($oSelf, $expected, $sLine = "")
 
 	;if $oSelf.text = "" Then $oSelf.text = ""
 	Local $actual = _CDP_Locator_TextContent($oSelf.subject)
-	If $actual = $expected Then
+	If _CDP_NormalizeText($actual) = _CDP_NormalizeText($expected) Then
 		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "]", $sLine)
 		Return True
     EndIf
@@ -2116,6 +2121,25 @@ EndFunc
 ; String helpers
 ; JSON helpers
 ; Debug helpers
+
+Func _CDP_NormalizeText($s)
+    ; Normalize line endings
+    $s = StringReplace($s, @CRLF, @LF)
+    $s = StringReplace($s, @CR, @LF)
+
+    ; Normalize NBSP to space
+    $s = StringReplace($s, Chr(0xA0), " ")
+
+    ; Remove zero-width characters
+    $s = StringRegExpReplace($s, "[\x{200B}\x{200C}\x{200D}\x{FEFF}]", "")
+
+    ; Trim trailing LF
+    While StringRight($s, 1) = @LF
+        $s = StringTrimRight($s, 1)
+    WEnd
+
+    Return $s
+EndFunc
 
 Func _CDP_Downloads_DeleteFile($fileMask)
 	FileDelete(@UserProfileDir & "\Downloads\" & $fileMask)
