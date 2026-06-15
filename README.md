@@ -288,6 +288,7 @@ Try the following examples from the main folder that demonstrate the UDF functio
 | Example Basic Inputs.au3 | Test of basic HTML input elements |
 | Example Number Inputs.au3 | Test of numeric HTML input elements |
 | Example Text Inputs.au3 | Test of text-based HTML input elements |
+| Example Other Text Inputs.au3 | Test of text area and select input elements |
 | Example API GET.au3 | Test of HTTP GET requests |
 | Example API POST.au3 | Test of HTTP POST requests |
 | Example API DELETE.au3 | Test of HTTP DELETE requests |
