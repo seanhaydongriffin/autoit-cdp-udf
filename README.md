@@ -154,8 +154,8 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | ``uncheck()`` | ✔️ | ✔️ | Runtime.callFunctionOn<br>Input.dispatchMouseEvent |
 | ``setChecked()`` | ✔️ | ✔️ | ?
 | ``selectOption()`` | ✔️ | ✔️ | Runtime.callFunctionOn<br>DOM.dispatchEvent |
-| ``focus()`` | ❌ | ✔️ | DOM.focus |
-| ``blur()`` | ❌ | ✔️ | Runtime.callFunctionOn |
+| ``focus()`` | ✔️ | ✔️ | DOM.focus |
+| ``blur()`` | ✔️ | ✔️ | Runtime.callFunctionOn |
 | ``clear()`` | ❌ | ✔️ | Runtime.callFunctionOn |
 | ``dragTo()`` | ❌ | ✔️ | DOM.getBoxModel<br>Input.dispatchMouseEvent |
 | ``setInputFiles()`` | ❌ | ✔️ | DOM.setFileInputFiles |
