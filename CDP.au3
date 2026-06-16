@@ -992,9 +992,9 @@ Func _CDP_Page_Locator($oSelf, $selector)
 			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; done
 			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; done
 			_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; done
-			_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; todo - Reqs CDP Commands Runtime.callFunctionOn, DOM.dispatchEvent
-			_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; todo - Reqs CDP Commands DOM.focus
-			_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; todo - Reqs CDP Commands Runtime.callFunctionOn
+			_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; done
+			_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; done
+			_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; done
 			_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo - Reqs CDP Commands Runtime.callFunctionOn
 			_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
 			_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo - Reqs CDP Commands DOM.setFileInputFiles
@@ -1332,11 +1332,16 @@ Func _CDP_Locator_SelectOption($oSelf, $value)
 EndFunc
 
 Func _CDP_Locator_Focus($oSelf)
-	; Todo
+
+	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
+	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("nodeId", $oSelf.nodeId))
+
 EndFunc
 
 Func _CDP_Locator_Blur($oSelf)
-	; Todo
+
+    _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.blur(); }"))
+	
 EndFunc
 
 Func _CDP_Locator_Clear($oSelf)

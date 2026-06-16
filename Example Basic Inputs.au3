@@ -29,6 +29,18 @@ With test("Basic Inputs test")
 			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 		EndWith
 
+		$page.locator("//input[@id='button-input']").focus()
+
+		With teststep("State after focus")
+			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("focus", @ScriptLineNumber)
+		EndWith
+
+		$page.locator("//input[@id='button-input']").blur()
+
+		With teststep("State after blur")
+			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("blur", @ScriptLineNumber)
+		EndWith
+
 		$page.locator("//input[@id='button-input']").click()
 
 		With teststep("State after click")
@@ -66,6 +78,18 @@ With test("Basic Inputs test")
 
 		With teststep("State after hover")
 			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+		EndWith
+
+		$page.locator("//input[@id='checkbox-input']").focus()
+
+		With teststep("State after focus")
+			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("focus", @ScriptLineNumber)
+		EndWith
+
+		$page.locator("//input[@id='checkbox-input']").blur()
+
+		With teststep("State after blur")
+			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("blur", @ScriptLineNumber)
 		EndWith
 
 		$page.locator("//input[@id='checkbox-input']").check()
@@ -111,6 +135,18 @@ With test("Basic Inputs test")
 				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
 			EndWith
 
+			$page.locator("//input[@id='radio-input-1']").focus()
+
+			With teststep("State after focus")
+				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("focus", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-1']").blur()
+
+			With teststep("State after blur")
+				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("blur", @ScriptLineNumber)
+			EndWith
+
 			$page.locator("//input[@id='radio-input-1']").check()
 
 			With teststep("State after check")
@@ -139,6 +175,18 @@ With test("Basic Inputs test")
 
 			With teststep("State after hover")
 				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-2']").focus()
+
+			With teststep("State after focus")
+				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("focus", @ScriptLineNumber)
+			EndWith
+
+			$page.locator("//input[@id='radio-input-2']").blur()
+
+			With teststep("State after blur")
+				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("blur", @ScriptLineNumber)
 			EndWith
 
 			$page.locator("//input[@id='radio-input-2']").setChecked(True)
