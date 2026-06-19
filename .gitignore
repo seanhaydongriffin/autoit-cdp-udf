@@ -1,0 +1,8 @@
+# AutoIt CDP UDF runtime artifacts
+chrome*/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
