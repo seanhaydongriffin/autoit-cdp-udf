@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/github/stars/seanhaydongriffin/autoit-cdp-udf?style=flat-square&color=00eaff&logo=reverbnation&logoColor=white">
   <img src="https://img.shields.io/github/last-commit/seanhaydongriffin/autoit-cdp-udf?style=flat-square&color=009dff&logo=github">
   <img src="https://img.shields.io/badge/os-Windows-00c8ff?style=flat-square&logo=windows&logoColor=white">
-    <a href="https://seanhaydonggriffin.github.io/autoit-cdp-udf/">
+  <a href="https://seanhaydongriffin.github.io/autoit-cdp-udf/">
     <img src="https://img.shields.io/badge/docs-website-00eaff?style=flat-square&logo=readthedocs&logoColor=white">
   </a>
   <img src="https://visitor-badge.laobi.icu/badge?page_id=seanhaydongriffin.autoit-cdp-udf&color=00eaff&style=flat-square">
