@@ -20,6 +20,7 @@
   <a href="#requirements">Requirements</a> •
   <a href="#getting-started">Getting Started</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="https://seanhaydongriffin.github.io/autoit-cdp-udf/">Documentation</a> •
   <a href="#license">License</a> •
   <a href="#acknowledgements">Acknowledgements</a>
 </p>
