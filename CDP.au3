@@ -42,7 +42,6 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 #region --- Initialization ---
 
 _CSV_Initialise()
-;_JsonC_Startup("json-c.dll")
 _JsonC_Startup()
 _AutoItObject_Startup()
 
@@ -331,7 +330,7 @@ Func _CDP_WaitForLoad($oContext, $timeout = 20000)
     Local $t = TimerInit()
     While Not $oState.Item("pageLoaded")
         If TimerDiff($t) > $timeout Then Return False
-        Sleep(10)
+        ;Sleep(10)
     WEnd
 
     Return $oContext
@@ -535,14 +534,14 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	Local $defaultTargetId = _CDP_Browser_GetDefaultTabTargetId($oBrowser)
 
 	If $defaultTargetId <> Null Then
-		_CDP_SendSync($oBrowser, "Target.closeTarget", _JsonC_Object().add("targetId", $defaultTargetId))
+		_CDP_SendCommand($oBrowser, "Target.closeTarget", _JsonC_Object().add("targetId", $defaultTargetId))
 	EndIf
 
     Return $oBrowser
 EndFunc
 
 Func _CDP_Browser_SetDiscoverTargets($oSelf)
-    _CDP_SendSync($oSelf, "Target.setDiscoverTargets", _JsonC_Object().add("discover", True))
+    _CDP_SendCommand($oSelf, "Target.setDiscoverTargets", _JsonC_Object().add("discover", True))
 EndFunc
 
 
@@ -746,9 +745,9 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddProperty($oPage, "targetId", $ELSCOPE_PUBLIC, $targetId)
 
     ; Enable core domains
-    _CDP_SendSync($oPage, "DOM.enable")
-    _CDP_SendSync($oPage, "Page.enable")
-    _CDP_SendSync($oPage, "Runtime.enable")
+    _CDP_SendCommand($oPage, "DOM.enable")
+    _CDP_SendCommand($oPage, "Page.enable")
+    _CDP_SendCommand($oPage, "Runtime.enable")
     ;_CDP_SendSync($oPage, "Network.enable")
 
     Return $oPage
@@ -757,7 +756,7 @@ EndFunc
 
 Func _CDP_Page_Goto($oSelf, $url, $waitForLoad = True)
 
-    _CDP_SendSync($oSelf, "Page.navigate", _JsonC_Object().add("url", $url))
+    _CDP_SendCommand($oSelf, "Page.navigate", _JsonC_Object().add("url", $url))
 	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
     Return $oSelf
 
@@ -1257,7 +1256,7 @@ Func _CDP_Locator_Hover($oSelf)
 
 	_CDP_Locator_ScrollIntoView($oSelf)
     ; Dispatch mouseMoved event
-    Local $resp = _CDP_SendSync($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
+    _CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	return $oSelf
 
 EndFunc
@@ -1362,16 +1361,16 @@ EndFunc
 
 Func _CDP_Locator_ScrollIntoView($oSelf)
 
-    _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.scrollIntoView({block: 'center', inline: 'center'}); }").add("awaitPromise", True))
+    _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.scrollIntoView({block: 'center', inline: 'center'}); }").add("awaitPromise", True))
 	__CDP_Locator_WaitForStableBox($oSelf)
 	return $oSelf
 
 EndFunc
 
 Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
-    Local $t = TimerInit()
     Local $lastLeft = -1, $lastTop = -1
 
+    Local $t = TimerInit()
     While TimerDiff($t) < $timeout
         _CDP_Locator_BoundingBox($oSelf)
         If @error Then ContinueLoop ; Return SetError(1,0,False)
@@ -1381,11 +1380,15 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
 
         $lastLeft = $oSelf.bboxLeft
         $lastTop  = $oSelf.bboxTop
-        Sleep(20)
+        ;Sleep(20)
     WEnd
 
     Return SetError(2,0,False)
 EndFunc
+
+
+
+
 
 Func _CDP_Locator_ScrollIntoViewIfNeeded($oSelf)
 	; Todo
@@ -1638,21 +1641,6 @@ EndFunc
 
 
 #region --- Test Class ---
-
-#cs
-Func _CDP_Test($oSelf, $text)
-
-	$text = "▶ Test: " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then
-		__CDP_ConsoleWriteUTF8($text)
-	Else
-	ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $text = ' & $text & @CRLF & '>Error code: ' & @error & @CRLF)
-		__CDP_ConsoleWriteUTF8Enterprise($text)
-	EndIf
-	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
-	Return $oSelf
-EndFunc
-#ce
 
 Func test($text)
 
