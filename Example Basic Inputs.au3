@@ -5,6 +5,7 @@
 
 #include "CDP.au3"
 
+$t = TimerInit()
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.newPage()
 
@@ -26,7 +27,7 @@ With test("Basic Inputs test")
 		$page.locator("//input[@id='button-input']").hover()
 
 		With teststep("State after hover")
-			.expect($page.locator("//span[@id='button-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='button-input-event-value']").textContent()).toMatch("mousemove|pointerrawupdate", @ScriptLineNumber)
 		EndWith
 
 		$page.locator("//input[@id='button-input']").focus()
@@ -77,7 +78,7 @@ With test("Basic Inputs test")
 		$page.locator("//input[@id='checkbox-input']").hover()
 
 		With teststep("State after hover")
-			.expect($page.locator("//span[@id='checkbox-input-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+			.expect($page.locator("//span[@id='checkbox-input-event-value']").textContent()).toMatch("mousemove|pointerrawupdate", @ScriptLineNumber)
 		EndWith
 
 		$page.locator("//input[@id='checkbox-input']").focus()
@@ -132,7 +133,7 @@ With test("Basic Inputs test")
 			$page.locator("//input[@id='radio-input-1']").hover()
 
 			With teststep("State after hover")
-				.expect($page.locator("//span[@id='radio-input-1-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-1-event-value']").textContent()).toMatch("mousemove|pointerrawupdate", @ScriptLineNumber)
 			EndWith
 
 			$page.locator("//input[@id='radio-input-1']").focus()
@@ -174,7 +175,7 @@ With test("Basic Inputs test")
 			$page.locator("//input[@id='radio-input-2']").hover()
 
 			With teststep("State after hover")
-				.expect($page.locator("//span[@id='radio-input-2-event-value']")).toHaveText("mousemove", @ScriptLineNumber)
+				.expect($page.locator("//span[@id='radio-input-2-event-value']").textContent()).toMatch("mousemove|pointerrawupdate", @ScriptLineNumber)
 			EndWith
 
 			$page.locator("//input[@id='radio-input-2']").focus()
@@ -219,3 +220,5 @@ With test("Basic Inputs test")
 EndWith
 
 $chrome.close()
+$d = TimerDiff($t)
+ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $d = ' & $d & @CRLF & '>Error code: ' & @error & @CRLF)

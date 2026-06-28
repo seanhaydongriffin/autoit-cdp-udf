@@ -25,7 +25,7 @@ FileInstall(".\sqlite3.exe", ".\")
 #include <WinAPIProc.au3>
 #include "JsonCEx.au3" ; this includes "AutoItObject.au3"
 #include "CurlEx.au3"
-#include "CSV.au3"
+#include "SQLite-XSV.au3"
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 Global $CDP_DISABLE_ALIASES
@@ -41,7 +41,7 @@ $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error hand
 
 #region --- Initialization ---
 
-_CSV_Initialise()
+_SQLite_XSV_Startup()
 _JsonC_Startup()
 _AutoItObject_Startup()
 
@@ -172,92 +172,98 @@ Func _CDP_RecvLoop()
 
     For $i = 0 To UBound($keys) - 1
 
-        Local $wsPort = $keys[$i]
-        Local $oState = $g_CDP_Browsers.Item($wsPort)
-        Local $hWs    = $oState.Item("wsHandle")
+        Local $wsPort 	= $keys[$i]
+        Local $oState 	= $g_CDP_Browsers.Item($wsPort)
+        Local $hWs    	= $oState.Item("wsHandle")
+		Local $fullMsg	= ""
 
-        ; -------------------------------
-        ; 1. Read full WebSocket frame
-        ; -------------------------------
-        Local $fullMsg = __CDP_ReadFullWsFrame($hWs)
-        If @error Then
-            ; rc=81 → no data
-            If @error = 81 Then ContinueLoop
+		Do
 
-            ; rc=56 → connection closed
-            If @error = 56 Then
-                If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
-                __CDP_RemoveBrowserState($wsPort)
-                ContinueLoop
-            EndIf
+			; -------------------------------
+			; 1. Read full WebSocket frame
+			; -------------------------------
+			$fullMsg = __CDP_ReadFullWsFrame($hWs)
+			If @error Then
+				; rc=81 → no data
+				If @error = 81 Then ContinueLoop
 
-            ; Any other error
-            ;If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & @error & @CRLF)
-            ;__CDP_RemoveBrowserState($wsPort)
-            ContinueLoop
-        EndIf
+				; rc=56 → connection closed
+				If @error = 56 Then
+					If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: connection closed (rc=56)" & @CRLF)
+					__CDP_RemoveBrowserState($wsPort)
+					ContinueLoop
+				EndIf
 
-        ; No message
-        If $fullMsg = "" Then ContinueLoop
+				; Any other error
+				;If $cdp.config.debug Then ConsoleWrite("CDP RECV LOOP: fatal error rc=" & @error & @CRLF)
+				;__CDP_RemoveBrowserState($wsPort)
+				ContinueLoop
+			EndIf
 
-        ; Debug output
-        If $cdp.config.debug Then ConsoleWrite("RECV: " & $fullMsg & @CRLF)
+			; Filter messages
+			If StringLeft($fullMsg, 6) = '{"id":' Or StringLeft($fullMsg, 31) = '{"method":"Page.loadEventFired"' Or StringLeft($fullMsg, 32) = '{"method":"Target.targetCreated"' Then
 
-        ; -------------------------------
-        ; 2. Parse JSON
-        ; -------------------------------
-        Local $msgObj = _JsonC_TokenerParse($fullMsg)
-        If $msgObj = 0 Then ContinueLoop
+				; Debug output
+				If $cdp.config.debug Then ConsoleWrite("RECV: " & $fullMsg & @CRLF)
 
-        Local $msgIdObj     = _JsonC_ObjectObjectGet($msgObj, "id")
-        Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
+				; -------------------------------
+				; 2. Parse JSON
+				; -------------------------------
+				Local $msgObj = _JsonC_TokenerParse($fullMsg)
+				If $msgObj = 0 Then ContinueLoop
 
-        Local $msgId = ""
-        Local $msgMethod = ""
+				Local $msgIdObj     = _JsonC_ObjectObjectGet($msgObj, "id")
+				Local $msgMethodObj = _JsonC_ObjectObjectGet($msgObj, "method")
 
-        If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
-        If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
+				Local $msgId = ""
+				Local $msgMethod = ""
+
+				If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
+				If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
 
 
-		if $msgMethod = "Target.targetCreated" Then
-			Local $paramsObj = _JsonC_ObjectObjectGet($msgObj, "params")
-			Local $targetInfoObj = _JsonC_ObjectObjectGet($paramsObj, "targetInfo")
-			Local $typeObj = _JsonC_ObjectObjectGet($targetInfoObj, "type")
-			Local $typeVal = _JsonC_ObjectGetString($typeObj)
-			if $typeVal = "page" Then
-				_JsonC_ObjectObjectGet($targetInfoObj, "openerId")
-				if @error = 0 Then
-					Local $targetIdObj = _JsonC_ObjectObjectGet($targetInfoObj, "targetId")
-					Local $targetIdVal = _JsonC_ObjectGetString($targetIdObj)
-					$oState.Item("nextTargetId") = $targetIdVal
-					if $oState.Item("contextId") = Null Then
-						Local $browserContextIdObj = _JsonC_ObjectObjectGet($targetInfoObj, "browserContextId")
-						Local $browserContextIdVal = _JsonC_ObjectGetString($browserContextIdObj)
-						$oState.Item("contextId") = $browserContextIdVal
+				if $msgMethod = "Target.targetCreated" Then
+					Local $paramsObj = _JsonC_ObjectObjectGet($msgObj, "params")
+					Local $targetInfoObj = _JsonC_ObjectObjectGet($paramsObj, "targetInfo")
+					Local $typeObj = _JsonC_ObjectObjectGet($targetInfoObj, "type")
+					Local $typeVal = _JsonC_ObjectGetString($typeObj)
+					if $typeVal = "page" Then
+						_JsonC_ObjectObjectGet($targetInfoObj, "openerId")
+						if @error = 0 Then
+							Local $targetIdObj = _JsonC_ObjectObjectGet($targetInfoObj, "targetId")
+							Local $targetIdVal = _JsonC_ObjectGetString($targetIdObj)
+							$oState.Item("nextTargetId") = $targetIdVal
+							if $oState.Item("contextId") = Null Then
+								Local $browserContextIdObj = _JsonC_ObjectObjectGet($targetInfoObj, "browserContextId")
+								Local $browserContextIdVal = _JsonC_ObjectGetString($browserContextIdObj)
+								$oState.Item("contextId") = $browserContextIdVal
+							EndIf
+						EndIf
 					EndIf
 				EndIf
-			EndIf
-		EndIf
 
-        ; -------------------------
-        ; 3. RESPONSE (has "id")
-        ; -------------------------
-        If $msgId <> "" Then
-            $oState.Item("pending").Item($msgId) = $msgObj
-        EndIf
+				; -------------------------
+				; 3. RESPONSE (has "id")
+				; -------------------------
+				If $msgId <> "" Then
+					$oState.Item("pending").Item($msgId) = $msgObj
+				EndIf
 
-        ; -------------------------
-        ; 4. EVENT (has "method")
-        ; -------------------------
-        If $msgMethod <> "" Then
-            If $cdp.state.events.Exists($msgMethod) Then
-                Call($cdp.state.events.Item($msgMethod), $wsPort, $msgObj)
-            EndIf
+				; -------------------------
+				; 4. EVENT (has "method")
+				; -------------------------
+				If $msgMethod <> "" Then
+					If $cdp.state.events.Exists($msgMethod) Then
+						Call($cdp.state.events.Item($msgMethod), $wsPort, $msgObj)
+					EndIf
 
-            If $msgMethod = "Inspector.detached" Then
-                __CDP_RemoveBrowserState($wsPort)
-            EndIf
-        EndIf
+					If $msgMethod = "Inspector.detached" Then
+						__CDP_RemoveBrowserState($wsPort)
+					EndIf
+				EndIf
+
+			Endif
+		Until $fullMsg = ""
 
     Next
 EndFunc
@@ -298,10 +304,10 @@ Func __CDP_ReadFullWsFrame($hWs)
 EndFunc
 
 
-Func __CDP_RemoveBrowserState($wsKey)
+Func __CDP_RemoveBrowserState($wsPort)
     ; Remove this browser's CDP state
-    If $g_CDP_Browsers.Exists($wsKey) Then
-        $g_CDP_Browsers.Remove($wsKey)
+    If $g_CDP_Browsers.Exists($wsPort) Then
+        $g_CDP_Browsers.Remove($wsPort)
 		if $cdp.config.debug = True Then ConsoleWrite("DEBUG: Browser closed. Browsers remaining = " & $g_CDP_Browsers.Count & @CRLF)
     EndIf
 
@@ -485,9 +491,26 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 		FileDelete($profile & "\Default\Network\Cookies-journal")
 	EndIf
 
+	; removing annoying notifications
+	if FileExists($profile & "\Default\Preferences") Then
+		Local $jPrefs = _JsonC_TokenerParse(FileRead($profile & "\Default\Preferences"))
+		If $jPrefs <> Null Then
+			Local $jProfile = _JsonC_ObjectObjectGet($jPrefs, "profile")
+			If $jProfile = Null Then 
+				$jPasswordManagerLeakDetection = _JsonC_ObjectNewObject()
+				_JsonC_ObjectObjectAdd($jPasswordManagerLeakDetection, "password_manager_leak_detection", _JsonC_ObjectNewBoolean(False))
+				_JsonC_ObjectObjectAdd($jPrefs, "profile", $jPasswordManagerLeakDetection)
+			else
+				_JsonC_ObjectObjectAdd($jProfile, "password_manager_leak_detection", _JsonC_ObjectNewBoolean(False))
+			endif
+		endif
+		FileDelete($profile & "\Default\Preferences")
+		FileWrite($profile & "\Default\Preferences", _JsonC_ObjectToJsonString($jPrefs))
+	EndIf
+
 	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
 	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
-	ConsoleWrite('> Info : Running ' & $cmd & @CRLF)
+	if $cdp.config.debug = True Then __CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Running ' & $cmd & @CRLF)
     Run($cmd)
 
 	if $cdp.config.infoPopups = True Then SplashOff()
@@ -575,11 +598,11 @@ Func __CDP_Browser_Connect($port)
 	Local $browserWsUrl = $jResp.body.get("webSocketDebuggerUrl").value()
 
 	If $browserWsUrl = Null Then
-		ConsoleWrite("No browser WebSocket found" & @CRLF)
+		__CDP_ConsoleWrite("No browser WebSocket found" & @CRLF)
 		Return
 	EndIf
 
-	ConsoleWrite('> Info : Browser WebSocket Url: ' & $browserWsUrl & @CRLF)
+	if $cdp.config.debug = True Then __CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Browser WebSocket Url: ' & $browserWsUrl & @CRLF)
 
 	; Connect to the browser level websocket
 	return _CDP_Connect($browserWsUrl)
@@ -706,7 +729,7 @@ Func _CDP_Browser_Close($oSelf)
 
     _CDP_SendCommand($oSelf, "Browser.close")
 	Sleep(500)
-	__CDP_RemoveBrowserState(String($oSelf.wsHandle))
+	__CDP_RemoveBrowserState($oSelf.wsPort)
     Return $oSelf
 
 EndFunc
@@ -1380,7 +1403,7 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
 
         $lastLeft = $oSelf.bboxLeft
         $lastTop  = $oSelf.bboxTop
-        ;Sleep(20)
+        Sleep(20)
     WEnd
 
     Return SetError(2,0,False)
@@ -1644,12 +1667,7 @@ EndFunc
 
 Func test($text)
 
-	$text = "▶ 🧪 " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then
-		__CDP_ConsoleWriteUTF8($text)
-	Else
-		__CDP_ConsoleWriteUTF8Enterprise($text)
-	EndIf
+	__CDP_ConsoleWrite("▶ 🧪 " & $text & @CRLF)
 
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
@@ -1666,20 +1684,21 @@ EndFunc
 
 Func testdata($poolName, $recordKey, $testKey = "") ; $fieldName = Default, $keyColumnName = Default)
 
-	Local $csv_handle
+	Local $data
 
 	if $poolName = "Environment" then
-		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
-		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")
+		_SQLite_XSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+		$data = _SQLite_XSV_QueryValue("SELECT ""Parameter Value"" FROM data WHERE ""Parameter Name"" = '" & $recordKey & "'")
+	ElseIf $poolName = "Release" then
+		_SQLite_XSV_Open(@ScriptDir & "\Data\Pools\" & $poolName & ".csv")
+		$data = _SQLite_XSV_QueryValue("SELECT ""Parameter Value"" FROM data WHERE ""Parameter Name"" = '" & $recordKey & "'")
+	Else
+		_SQLite_XSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+		$data = _SQLite_XSV_QueryRecord("SELECT * FROM data WHERE ""Comment 1"" = '" & $recordKey & "' AND ""Assigned to"" = '" & $testKey & "'")
 	EndIf
 
-	if $poolName = "Release" then
-		$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $poolName & ".csv")
-		Return _CSV_QuerySingleValue($csv_handle, "SELECT ""Parameter Value"" FROM csv WHERE ""Parameter Name"" = '" & $recordKey & "'")
-	EndIf
-
-	$csv_handle = _CSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
-	Return _CSV_Query($csv_handle, "SELECT * FROM csv WHERE ""Comment 1"" = '" & $recordKey & "' AND ""Assigned to"" = '" & $testKey & "'")
+	_SQLite_XSV_Close()
+	Return $data
 
 EndFunc
 
@@ -1689,12 +1708,7 @@ EndFunc
 
 Func teststep($text)
 
-	$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 👣 " & $text & @CRLF
-    if $cdp.config.enterpriseMode = False Then
-		__CDP_ConsoleWriteUTF8($text)
-	Else
-		__CDP_ConsoleWriteUTF8Enterprise($text)
-	EndIf
+	__CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & "▶ 👣 " & $text & @CRLF)
 
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
@@ -1760,16 +1774,11 @@ EndFunc
 
 
 Func _CDP_Test_Step_Expect_Msg($indent, $pass, $text, $lineNumber = "")
-	$result = "✓"
-	if $pass = False Then $result = "✗"
+	$result = "▶ ✓"
+	if $pass = False Then $result = "▶ ✗"
 	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
 
-	$text = $indent & $result & " Expect " & StringStripWS($text, 1) & $lineNumber & @CRLF
-	if $cdp.config.enterpriseMode = True Then 
-		__CDP_ConsoleWriteUTF8Enterprise($text)
-	Else
-    	__CDP_ConsoleWriteUTF8($text)
-	EndIf
+   	__CDP_ConsoleWrite($indent & $result & " Expect " & StringStripWS($text, 1) & $lineNumber & @CRLF)
 EndFunc
 
 
@@ -1777,10 +1786,10 @@ Func _CDP_Expect_Locator_ToBeVisible($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsVisible($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be visible", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be visible", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not visible", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not visible", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1789,10 +1798,10 @@ Func _CDP_Expect_Locator_ToBeHidden($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsHidden($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] to be hidden", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1801,10 +1810,10 @@ Func _CDP_Expect_Locator_ToBeEnabled($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsEnabled($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is enabled", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is enabled", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not enabled", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not enabled", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1813,10 +1822,10 @@ Func _CDP_Expect_Locator_ToBeDisabled($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsDisabled($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is disabled", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is disabled", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not disabled", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not disabled", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1825,10 +1834,10 @@ Func _CDP_Expect_Locator_ToBeChecked($oSelf, $scriptLineNumber = "")
 
 	if $oSelf.text = "" Then $oSelf.text = "object"
 	if _CDP_Locator_IsChecked($oSelf.subject) = True Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is checked", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " [" & $oSelf.subject.objectId & "] is checked", $scriptLineNumber)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not checked", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " [" & $oSelf.subject.objectId & "] is not checked", $scriptLineNumber)
     Return False
 
 EndFunc
@@ -1838,10 +1847,10 @@ Func _CDP_Expect_Locator_ToHaveText($oSelf, $expected, $sLine = "")
 	;if $oSelf.text = "" Then $oSelf.text = ""
 	Local $actual = _CDP_Locator_TextContent($oSelf.subject)
 	If _CDP_NormalizeText($actual) = _CDP_NormalizeText($expected) Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have [" & $expected & "]", $sLine)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " to have [" & $expected & "]", $sLine)
 		Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to have [" & $expected & "] but got [" & $actual & "]", $sLine)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " to have [" & $expected & "] but got [" & $actual & "]", $sLine)
     Return False
 EndFunc
 
@@ -1850,10 +1859,10 @@ Func _CDP_Expect_Locator_ToContainText($oSelf, $expected, $scriptLineNumber = ""
 	;if $oSelf.text = "" Then $oSelf.text = ""
 	Local $actual = _CDP_Locator_TextContent($oSelf.subject)
 	If StringInStr($actual, $expected) > 0 Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to contain [" & $expected & "]", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " to contain [" & $expected & "]", $scriptLineNumber)
         Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to contain [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " to contain [" & $expected & "] but got [" & $actual & "]", $scriptLineNumber)
     Return False
 EndFunc
 
@@ -1861,10 +1870,10 @@ Func _CDP_Expect_Locator_ToHaveAttribute($oSelf, $name, $expectedValue, $scriptL
 
 	Local $actualValue = _CDP_Locator_GetAttribute($oSelf.subject, $name)
 	If $actualValue = $expectedValue Then
-		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to have attribute [" & $name & "] with value [" & $expectedValue & "]", $scriptLineNumber)
+		_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " to have attribute [" & $name & "] with value [" & $expectedValue & "]", $scriptLineNumber)
         Return True
     EndIf
-	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to have attribute [" & $name & "] with value [" & $expectedValue & "]", $scriptLineNumber)
+	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " to have attribute [" & $name & "] with value [" & $expectedValue & "]", $scriptLineNumber)
     Return False
 EndFunc
 
@@ -1880,10 +1889,10 @@ Func _CDP_Expect_Value_ToBe($oSelf, $expected, $line = "")
 
     Local $actual = $oSelf.subject
 	If $actual = $expected Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), True, $oSelf.text & " to be [" & $expected & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), True, $oSelf.text & " to be [" & $expected & "]", $line)
         Return True
     EndIf
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), False, $oSelf.text & " to be [" & $expected & "] but got [" & $actual & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), False, $oSelf.text & " to be [" & $expected & "] but got [" & $actual & "]", $line)
     Return False
 EndFunc
 
@@ -1906,28 +1915,28 @@ Func _CDP_Expect_Value_ToBeGreaterThan($oSelf, $expected, $line = "")
 	;if $oSelf.text = "" Then $oSelf.text = ""
     Local $actual = $oSelf.subject
     Local $pass = (Number($actual) > Number($expected))
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to be greater than [" & $expected & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to be greater than [" & $expected & "]", $line)
     Return $pass
 EndFunc
 
 Func _CDP_Expect_Value_ToBeGreaterThanOrEqual($oSelf, $expected, $line = "")
     Local $actual = $oSelf.subject
     Local $pass = (Number($actual) >= Number($expected))
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to be greater than or equal to [" & $expected & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to be greater than or equal to [" & $expected & "]", $line)
     Return $pass
 EndFunc
 
 Func _CDP_Expect_Value_ToBeLessThan($oSelf, $expected, $line = "")
     Local $actual = $oSelf.subject
     Local $pass = (Number($actual) < Number($expected))
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to be less than [" & $expected & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to be less than [" & $expected & "]", $line)
     Return $pass
 EndFunc
 
 Func _CDP_Expect_Value_ToBeLessThanOrEqual($oSelf, $expected, $line = "")
     Local $actual = $oSelf.subject
     Local $pass = (Number($actual) <= Number($expected))
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to be less than or equal to [" & $expected & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to be less than or equal to [" & $expected & "]", $line)
     Return $pass
 EndFunc
 
@@ -1935,7 +1944,7 @@ Func _CDP_Expect_Value_ToBeCloseTo($oSelf, $expected, $precision = 2, $line = ""
     Local $actual = $oSelf.subject
     Local $delta = Abs($actual - $expected)
     Local $pass = ($delta <= (10 ^ -$precision))
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $expected & "] to be close to [" & $actual & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $expected & "] to be close to [" & $actual & "]", $line)
     Return $pass
 EndFunc
 
@@ -1955,9 +1964,9 @@ Func _CDP_Expect_Value_ToContain($oSelf, $expected, $line = "")
     EndIf
 
 	if $pass Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to contain [" & $expected & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to contain [" & $expected & "]", $line)
 	Else
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to contain [" & $expected & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to contain [" & $expected & "]", $line)
 	EndIf
 
     Return $pass
@@ -1966,7 +1975,7 @@ EndFunc
 Func _CDP_Expect_Value_ToMatch($oSelf, $pattern, $line = "")
     Local $actual = $oSelf.subject
     Local $pass = StringRegExp($actual, $pattern)
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " [" & $actual & "] to match regex [" & $pattern & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " [" & $actual & "] to match regex [" & $pattern & "]", $line)
     Return $pass
 EndFunc
 
@@ -1976,9 +1985,9 @@ Func _CDP_Expect_Value_ToBeTruthy($oSelf, $line = "")
     Local $pass = ($actual <> 0)
 
 	if $pass Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be truthy", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be truthy", $line)
 	Else
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be truthy and got [" & $actual & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be truthy and got [" & $actual & "]", $line)
 	EndIf
 
     Return $pass
@@ -1990,9 +1999,9 @@ Func _CDP_Expect_Value_ToBeFalsy($oSelf, $line = "")
     Local $pass = ($actual = 0)
 
 	if $pass Then
-	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be falsy", $line)
+	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be falsy", $line)
 	Else
-	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be falsy and got [" & $actual & "]", $line)
+	    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be falsy and got [" & $actual & "]", $line)
 	EndIf
 
     Return $pass
@@ -2004,9 +2013,9 @@ Func _CDP_Expect_Value_ToBeNull($oSelf, $line = "")
 	if $actual = Null then $actual = "Null"
 
 	if $pass Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be Null", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be Null", $line)
 	Else
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be Null but got [" & $actual & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be Null but got [" & $actual & "]", $line)
 	EndIf
 
     Return $pass
@@ -2019,9 +2028,9 @@ Func _CDP_Expect_Value_ToBeDefined($oSelf, $line = "?")
 	if $pass = False then $actual = "undefined"
 
 	if $pass Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be defined", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be defined", $line)
 	Else
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be defined and got [" & $actual & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be defined and got [" & $actual & "]", $line)
 	EndIf
 
     Return $pass
@@ -2032,7 +2041,7 @@ Func _CDP_Expect_Value_ToBeUndefined($oSelf, $line = "?")
     Local $pass = ($actual = Default)
 	$actual = "undefined"
 	if $pass = False then $actual = "defined"
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to be undefined and got [" & $actual & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to be undefined and got [" & $actual & "]", $line)
     Return $pass
 EndFunc
 
@@ -2053,7 +2062,7 @@ Func _CDP_Expect_Value_ToContainEqual($oSelf, $expected, $scriptLineNumber = "")
         Next
     EndIf
 
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, "expected array to contain deep-equal [" & Json_Encode($expected) & "]", $line)
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, "expected array to contain deep-equal [" & Json_Encode($expected) & "]", $line)
 
     Return $pass
 	#ce
@@ -2072,9 +2081,9 @@ Func _CDP_Expect_Value_ToHaveLength($oSelf, $expected, $line = "")
     Local $pass = ($len = $expected)
 
 	if $pass Then
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to have length [" & $expected & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to have length [" & $expected & "]", $line)
 	Else
-    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, $oSelf.text & " to have length [" & $expected & "] but got [" & $len & "]", $line)
+    	_CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, $oSelf.text & " to have length [" & $expected & "] but got [" & $len & "]", $line)
 	EndIf
 
     Return $pass
@@ -2096,7 +2105,7 @@ Func _CDP_Expect_Value_ToThrow($oSelf, $expected, $scriptLineNumber = "")
         $pass = ($err <> 0)
     EndIf
 
-    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel + 1), $pass, _
+    _CDP_Test_Step_Expect_Msg(_StringRepeat("  ", $cdp.state.indentLevel), $pass, _
         "expected function to throw", $line)
 
     Return $pass
@@ -2171,7 +2180,8 @@ Func __CDP_ResolveBrowserSpecifier($browser)
     Local $cmd = 'selenium-manager.exe --browser ' & $browserType & ' --browser-version ' & $browserVersion & ' --cache-path .'
 
     ; Run Selenium Manager and capture output
-	ConsoleWrite('> Info : Locating ' & $browserType & ' version ' & $browserVersion & ' (this may take a moment if it needs to download)' & @CRLF)
+	ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Locating ' & $browserType & ' version ' & $browserVersion & ' (this may take a moment if it needs to download)' & @CRLF)
+
     if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $browserType & ' version ' & $browserVersion & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
 	Local $output = __CDP_RunCmdCapture($cmd)
     If @error Then Return SetError(2, 0, "")
@@ -2247,13 +2257,21 @@ Func __CDP_Base64Decode($input_string)
 
 EndFunc
 
+Func __CDP_ConsoleWrite($sText)
+    if $cdp.config.enterpriseMode = False Then
+		__CDP_ConsoleWriteUTF8($sText)
+	Else
+		__CDP_ConsoleWriteUTF8Enterprise($sText)
+	EndIf
+EndFunc
+
 Func __CDP_ConsoleWriteUTF8($sText)
 	; ChrW(0x200B) enforces unicode fallback fonts in windows console
-    ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
+	ConsoleWrite(BinaryToString(StringToBinary(ChrW(0x200B) & $sText, 4), 1))
 EndFunc
 
 Func __CDP_ConsoleWriteUTF8Enterprise($sText)
-	__CDP_ConsoleWriteUTF8(StringFormat("[%i-%02i-%02i %02i꞉%02i꞉%02i] %s", @YEAR, @MON, @MDAY, @HOUR, @MIN, @SEC, $sText))
+	if $cdp.config.enterpriseMode = True Then __CDP_ConsoleWriteUTF8(StringFormat("[%i-%02i-%02i %02i꞉%02i꞉%02i.%03i] %s", @YEAR, @MON, @MDAY, @HOUR, @MIN, @SEC, @MSEC, $sText))
 EndFunc
 
 ; Override for __Au3Obj_FunctionProxy from AutoItObject.au3
@@ -2262,8 +2280,7 @@ Func __Au3Obj_FunctionProxy($FuncName, $oSelf) ; allows binary code to call auto
 
 	Local $testLogIndex = _ArraySearch($arg, " called <AutoItObject $FuncName> ", 0, 0, 1, 1)
 	if $testLogIndex > -1 Then
-		$text = _StringRepeat("  ", $cdp.state.indentLevel) & "▶ 🔧 " & StringReplace($arg[$testLogIndex], "<AutoItObject $FuncName>", $FuncName) & @CRLF
-		if $cdp.config.enterpriseMode = True Then __CDP_ConsoleWriteUTF8Enterprise($text)
+		__CDP_ConsoleWriteUTF8Enterprise(_StringRepeat("  ", $cdp.state.indentLevel) & "▶ 🔧 " & StringReplace($arg[$testLogIndex], "<AutoItObject $FuncName>", $FuncName) & @CRLF)
 		_ArrayDelete($arg, $testLogIndex)
 	EndIf
 
