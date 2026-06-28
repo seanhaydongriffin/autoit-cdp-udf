@@ -2,7 +2,6 @@
 #AutoIt3Wrapper_UseX64=y
 #AutoIt3Wrapper_Change2CUI=y
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
-
 #include "CDP.au3"
 
 Local $chrome1, $chrome2
@@ -16,6 +15,7 @@ With test("Multiple Chrome Tabs test")
 		$chromepage1.locator("//a[@id='gobasicajax']").click()
 		$chromepage2 = $chrome.getNewPage()
 		$windowNameButton = $chromepage2.waitForLoad().locator("//button[@id='window-name-button']")
+		Sleep(500)
 		$windowNameButton.click()
 		.expect($windowNameButton).toHaveText("window-with-name", @ScriptLineNumber)
 		$chrome.close()
