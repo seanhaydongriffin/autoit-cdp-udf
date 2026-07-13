@@ -4,6 +4,7 @@
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include "CDP.au3"
 
+$cdp.config.video = $CDPVIDEO_ON
 ;$cdp.config.debug = True
 
 $timer = TimerInit()

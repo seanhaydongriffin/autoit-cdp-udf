@@ -2,7 +2,6 @@
 #include "FA.Namespace.au3"
 #include "..\UI\UI.Namespace.au3"
 
-
 #Region --- page objects ---
 #EndRegion
 

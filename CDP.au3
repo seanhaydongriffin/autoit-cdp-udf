@@ -31,11 +31,23 @@ Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 Global $CDP_DISABLE_ALIASES
 Global Enum $CDP_BROWSER, $CDP_PAGE
 
+Global Enum _
+		$CDPVIDEO_ON, _
+		$CDPVIDEO_OFF, _
+		$CDPVIDEO_RETAIN_ON_FAILURE, _
+		$CDPVIDEO_ON_FIRST_RETRY
+
 ; Global CDP registry: wsHandle → state object
 Global $g_CDP_Browsers = ObjCreate("Scripting.Dictionary")
 Global $g_CDP_TestEnv = ""
 
 $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error handler
+
+Global $g_ffmpegHandle = Null
+Global $g_ffmpegDataXml = ObjCreate("MSXML2.DOMDocument")
+Global $g_ffmpegDataNode = $g_ffmpegDataXml.createElement("b64")
+$g_ffmpegDataNode.dataType = "bin.base64"
+Global $g_fChromeStartTime = 0
 
 #endregion
 
@@ -55,6 +67,7 @@ _AutoItObject_AddProperty($cdpConfig, "debug", 				$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "infoPopups", 		$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "errorPopups", 		$ELSCOPE_PUBLIC, False)
 _AutoItObject_AddProperty($cdpConfig, "enterpriseMode", 	$ELSCOPE_PUBLIC, False)
+_AutoItObject_AddProperty($cdpConfig, "video", 				$ELSCOPE_PUBLIC, $CDPVIDEO_OFF)
 
 Global $cdpBrowser = _AutoItObject_Create()
 _AutoItObject_AddMethod($cdpBrowser, "exists", 				"_CDP_Browser_Exists")
@@ -137,6 +150,28 @@ Func _CDP_SendCommand($oContext, $sMethod, $oParams = Null)
     Return $iId
 EndFunc
 
+Func _CDP_SendCommand2($wsPort, $wsHandle, $iType, $sSessionId, $sMethod, $oParams = Null)
+
+	If Not $g_CDP_Browsers.Exists($wsPort) Then Return SetError(2, 0, 0)
+	Local $oState = $g_CDP_Browsers.Item($wsPort)
+
+	; Allocate id
+    Local $iId = $oState.Item("nextId")
+    $oState.Item("nextId") = $iId + 1
+
+	Local $jCmd = _JsonC_Object()
+	$jCmd.add("id", $iId)
+	$jCmd.add("method", $sMethod)
+	If $iType = $CDP_PAGE Then $jCmd.add("sessionId", $sSessionId)
+	If $oParams <> Null Then $jCmd.add("params", $oParams)
+	Local $sJson = $jCmd.toString()
+
+    if $cdp.config.debug = True Then ConsoleWrite("SEND: " & $sJson & @CRLF)
+
+    __CDP_Send($wsHandle, $sJson)
+    Return $iId
+EndFunc
+
 Func _CDP_SendSync($oContext, $method, $params = Null, $timeout = 10000)
 
     If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then Return SetError(2, 0, Null)
@@ -201,7 +236,7 @@ Func _CDP_RecvLoop()
 			EndIf
 
 			; Filter messages
-			If StringLeft($fullMsg, 6) = '{"id":' Or StringLeft($fullMsg, 31) = '{"method":"Page.loadEventFired"' Or StringLeft($fullMsg, 32) = '{"method":"Target.targetCreated"' Then
+			If StringLeft($fullMsg, 6) = '{"id":' Or StringLeft($fullMsg, 31) = '{"method":"Page.loadEventFired"' Or StringLeft($fullMsg, 32) = '{"method":"Target.targetCreated"' Or StringLeft($fullMsg, 32) = '{"method":"Page.screencastFrame"' Then
 
 				; Debug output
 				If $cdp.config.debug Then ConsoleWrite("RECV: " & $fullMsg & @CRLF)
@@ -221,7 +256,6 @@ Func _CDP_RecvLoop()
 				If $msgIdObj <> 0 Then $msgId = _JsonC_ObjectGetValue($msgIdObj)
 				If $msgMethodObj <> 0 Then $msgMethod = _JsonC_ObjectGetValue($msgMethodObj)
 
-
 				if $msgMethod = "Target.targetCreated" Then
 					Local $paramsObj = _JsonC_ObjectObjectGet($msgObj, "params")
 					Local $targetInfoObj = _JsonC_ObjectObjectGet($paramsObj, "targetInfo")
@@ -240,6 +274,32 @@ Func _CDP_RecvLoop()
 							EndIf
 						EndIf
 					EndIf
+				EndIf
+
+				;if $cdp.config.video = $CDPVIDEO_ON And $msgMethod = "Page.screencastFrame" Then
+				if $g_ffmpegHandle <> Null And $msgMethod = "Page.screencastFrame" Then
+					Local $sessionIdVal = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($msgObj, "sessionId"))
+					Local $paramsObj = _JsonC_ObjectObjectGet($msgObj, "params")
+					Local $paramsSessionIdVal = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($paramsObj, "sessionId"))
+					Local $dataVal = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($paramsObj, "data"))
+					Local $fChromeTimestamp = _JsonC_ObjectGetDouble(_JsonC_ObjectObjectGet(_JsonC_ObjectObjectGet($paramsObj, "metadata"), "timestamp"))
+
+					; decode base64 $dataVal
+					$g_ffmpegDataNode.text = $dataVal
+					$dataVal = $g_ffmpegDataNode.nodeTypedValue
+
+					Local $tBuf = DllStructCreate("byte[" & BinaryLen($dataVal) & "]")
+					DllStructSetData($tBuf, 1, $dataVal)
+
+					$fChromeTimestamp = $fChromeTimestamp * 1000
+					if $g_fChromeStartTime = 0 Then $g_fChromeStartTime = $fChromeTimestamp
+					Local $timestampMs = $fChromeTimestamp - $g_fChromeStartTime
+
+					DllCall($g_ffmpegHandle, "int", "WriteFrame", "ptr", DllStructGetPtr($tBuf), "int", BinaryLen($dataVal), "double", $timestampMs)
+
+					;_CDP_SendCommand($oBrowser, "Page.screencastFrameAck", _JsonC_Object().add("targetId", $defaultTargetId))
+					_CDP_SendCommand2($wsPort, $hWs, $CDP_PAGE, $sessionIdVal, "Page.screencastFrameAck", _JsonC_Object().add("sessionId", $paramsSessionIdVal))
+
 				EndIf
 
 				; -------------------------
@@ -496,7 +556,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 		Local $jPrefs = _JsonC_TokenerParse(FileRead($profile & "\Default\Preferences"))
 		If $jPrefs <> Null Then
 			Local $jProfile = _JsonC_ObjectObjectGet($jPrefs, "profile")
-			If $jProfile = Null Then 
+			If $jProfile = Null Then
 				$jPasswordManagerLeakDetection = _JsonC_ObjectNewObject()
 				_JsonC_ObjectObjectAdd($jPasswordManagerLeakDetection, "password_manager_leak_detection", _JsonC_ObjectNewBoolean(False))
 				_JsonC_ObjectObjectAdd($jPrefs, "profile", $jPasswordManagerLeakDetection)
@@ -531,6 +591,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
     $oState.Add("nextTargetId", Null)
     $oState.Add("nextId",  1)
     $oState.Add("pageLoaded", False)
+    ;$oState.Add("type", $CDP_BROWSER)
 
 	$g_CDP_Browsers.Add($port, $oState)
 
@@ -727,6 +788,12 @@ EndFunc
 
 Func _CDP_Browser_Close($oSelf)
 
+    if $cdp.config.video = $CDPVIDEO_ON Then
+		DllCall($g_ffmpegHandle, "int", "StopRecorder")
+		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : @error = ' & @error & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+		DllClose($g_ffmpegHandle)
+	EndIf
+
     _CDP_SendCommand($oSelf, "Browser.close")
 	Sleep(500)
 	__CDP_RemoveBrowserState($oSelf.wsPort)
@@ -772,6 +839,11 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _CDP_SendCommand($oPage, "Page.enable")
     _CDP_SendCommand($oPage, "Runtime.enable")
     ;_CDP_SendSync($oPage, "Network.enable")
+
+
+	_CDP_SendCommand($oPage, "Page.startScreencast", _JsonC_Object().add("format", "jpeg").add("quality", 80).add("maxWidth", 1280).add("maxHeight", 720))
+
+
 
     Return $oPage
 
@@ -1363,7 +1435,7 @@ EndFunc
 Func _CDP_Locator_Blur($oSelf)
 
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.blur(); }"))
-	
+
 EndFunc
 
 Func _CDP_Locator_Clear($oSelf)
@@ -1673,6 +1745,14 @@ Func test($text)
 
 	; get the test environment from a release datapool if it exists
 	if FileExists(@ScriptDir & "\Data\Pools\Release.csv") Then $g_CDP_TestEnv = testdata("Release", "Test Environment")
+
+    if $cdp.config.video = $CDPVIDEO_ON Then
+		$videoPath = @ScriptDir & "\test-results\" & $text
+		if Not FileExists($videoPath) Then DirCreate($videoPath)
+		$g_ffmpegHandle = DllOpen("FFMpegRecorder.dll")
+		DllCall($g_ffmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $videoPath & "\video.webm")
+		$g_fChromeStartTime = 0
+	EndIf
 
 	Local $test = _AutoItObject_Create()
 	;_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)

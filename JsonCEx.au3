@@ -5,15 +5,22 @@
 #region --- Object ---
 
 Func _JsonC_Object($vJson = "")
-    Local $o = _AutoItObject_Create()
+    Local $o
 
     if IsString($vJson) Then
         if $vJson = "" Then
+			$o = _AutoItObject_Create()
             _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewObject())
         Else
-            _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, _JsonC_TokenerParse($vJson))
+			Local $h = _JsonC_TokenerParse($vJson)
+			If _JsonC_ObjectGetType($h) = $JSONC_TYPE_ARRAY Then Return _JsonC_Array($h)
+			$o = _AutoItObject_Create()
+            _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, $h)
         EndIf
-    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then 
+	ElseIf _JsonC_ObjectGetType($vJson) = $JSONC_TYPE_ARRAY Then
+		Return _JsonC_Array($vJson)
+    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then
+		$o = _AutoItObject_Create()
         _AutoItObject_AddProperty($o, "handle",  $ELSCOPE_PUBLIC, $vJson)
     EndIf
 
@@ -106,7 +113,7 @@ Func _JsonC_Array($vJson = "")
         if $vJson = "" Then
             _AutoItObject_AddProperty($oObj, "handle",  $ELSCOPE_PUBLIC, _JsonC_ObjectNewArray())
         EndIf
-    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then 
+    ElseIf _JsonC_ObjectGetType($vJson) > 0 Then
         _AutoItObject_AddProperty($oObj, "handle",  $ELSCOPE_PUBLIC, $vJson)
     EndIf
 

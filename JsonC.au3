@@ -83,7 +83,7 @@ Global Const $tagJSONC_OBJECT = _
 ; Name ..........: _JsonC_Version
 ; Description ...: Returns the version of json-c
 ; Syntax ........: _JsonC_Version()
-; Parameters ....: 
+; Parameters ....:
 ; Return values .: the version of json-c
 ; Author ........: SeanGriffin
 ; =================================================================================================

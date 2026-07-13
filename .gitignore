@@ -19,6 +19,9 @@ chrome*/
 website/build/
 website/.docusaurus/
 
+# Test results
+test-results/
+
 # Node modules
 website/node_modules/
 

@@ -361,7 +361,7 @@ Func Curl_SetOptions(ByRef $iCurl, $iHtml, $iHeader, $sUrl, $sPostData, $oHeader
 	Curl_Easy_Setopt($iCurl, $CURLOPT_HEADERDATA, $iHeader)
 	if $oHeaderList <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_HTTPHEADER, $oHeaderList)
 	Curl_Easy_Setopt($iCurl, $CURLOPT_TIMEOUT, $timeout)
-	if $sPostData <> Null Then 
+	if $sPostData <> Null Then
         Curl_Easy_Setopt($iCurl, $CURLOPT_POST, 1)
         Curl_Easy_Setopt($iCurl, $CURLOPT_COPYPOSTFIELDS, $sPostData)
     EndIf
