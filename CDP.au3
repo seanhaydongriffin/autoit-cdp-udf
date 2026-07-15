@@ -2,7 +2,7 @@
 FileInstall(".\curl-ca-bundle.crt", ".\")
 FileInstall(".\libcurl-x64.dll", ".\")
 FileInstall(".\selenium-manager.exe", ".\")
-FileInstall(".\sqlite3_x64.dll", ".\")
+FileInstall(".\sqlite3_xsv.dll", ".\")
 FileInstall(".\sqlite3.exe", ".\")
 
 ; ======================================================================================================================
@@ -33,9 +33,9 @@ Global Enum $CDP_BROWSER, $CDP_PAGE
 
 Global Enum _
 		$CDPVIDEO_ON, _
-		$CDPVIDEO_OFF, _
-		$CDPVIDEO_RETAIN_ON_FAILURE, _
-		$CDPVIDEO_ON_FIRST_RETRY
+		$CDPVIDEO_OFF
+		; $CDPVIDEO_RETAIN_ON_FAILURE, _			; todo
+		;$CDPVIDEO_ON_FIRST_RETRY					; todo
 
 ; Global CDP registry: wsHandle → state object
 Global $g_CDP_Browsers = ObjCreate("Scripting.Dictionary")
@@ -43,10 +43,10 @@ Global $g_CDP_TestEnv = ""
 
 $AutoItError = ObjEvent("AutoIt.Error", "ErrFunc") ; Install a custom error handler
 
-Global $g_ffmpegHandle = Null
-Global $g_ffmpegDataXml = ObjCreate("MSXML2.DOMDocument")
-Global $g_ffmpegDataNode = $g_ffmpegDataXml.createElement("b64")
-$g_ffmpegDataNode.dataType = "bin.base64"
+Global $g_CDP_FfmpegHandle = Null
+Global $g_CDP_FfmpegDataXml = ObjCreate("MSXML2.DOMDocument")
+Global $g_CDP_FfmpegDataNode = $g_CDP_FfmpegDataXml.createElement("b64")
+$g_CDP_FfmpegDataNode.dataType = "bin.base64"
 Global $g_fChromeStartTime = 0
 
 #endregion
@@ -277,7 +277,7 @@ Func _CDP_RecvLoop()
 				EndIf
 
 				;if $cdp.config.video = $CDPVIDEO_ON And $msgMethod = "Page.screencastFrame" Then
-				if $g_ffmpegHandle <> Null And $msgMethod = "Page.screencastFrame" Then
+				if $g_CDP_FfmpegHandle <> Null And $msgMethod = "Page.screencastFrame" Then
 					Local $sessionIdVal = _JsonC_ObjectGetString(_JsonC_ObjectObjectGet($msgObj, "sessionId"))
 					Local $paramsObj = _JsonC_ObjectObjectGet($msgObj, "params")
 					Local $paramsSessionIdVal = _JsonC_ObjectGetInt(_JsonC_ObjectObjectGet($paramsObj, "sessionId"))
@@ -285,8 +285,8 @@ Func _CDP_RecvLoop()
 					Local $fChromeTimestamp = _JsonC_ObjectGetDouble(_JsonC_ObjectObjectGet(_JsonC_ObjectObjectGet($paramsObj, "metadata"), "timestamp"))
 
 					; decode base64 $dataVal
-					$g_ffmpegDataNode.text = $dataVal
-					$dataVal = $g_ffmpegDataNode.nodeTypedValue
+					$g_CDP_FfmpegDataNode.text = $dataVal
+					$dataVal = $g_CDP_FfmpegDataNode.nodeTypedValue
 
 					Local $tBuf = DllStructCreate("byte[" & BinaryLen($dataVal) & "]")
 					DllStructSetData($tBuf, 1, $dataVal)
@@ -295,7 +295,7 @@ Func _CDP_RecvLoop()
 					if $g_fChromeStartTime = 0 Then $g_fChromeStartTime = $fChromeTimestamp
 					Local $timestampMs = $fChromeTimestamp - $g_fChromeStartTime
 
-					DllCall($g_ffmpegHandle, "int", "WriteFrame", "ptr", DllStructGetPtr($tBuf), "int", BinaryLen($dataVal), "double", $timestampMs)
+					DllCall($g_CDP_FfmpegHandle, "int", "WriteFrame", "ptr", DllStructGetPtr($tBuf), "int", BinaryLen($dataVal), "double", $timestampMs)
 
 					;_CDP_SendCommand($oBrowser, "Page.screencastFrameAck", _JsonC_Object().add("targetId", $defaultTargetId))
 					_CDP_SendCommand2($wsPort, $hWs, $CDP_PAGE, $sessionIdVal, "Page.screencastFrameAck", _JsonC_Object().add("sessionId", $paramsSessionIdVal))
@@ -789,9 +789,8 @@ EndFunc
 Func _CDP_Browser_Close($oSelf)
 
     if $cdp.config.video = $CDPVIDEO_ON Then
-		DllCall($g_ffmpegHandle, "int", "StopRecorder")
-		ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : @error = ' & @error & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
-		DllClose($g_ffmpegHandle)
+		DllCall($g_CDP_FfmpegHandle, "int", "StopRecorder")
+		DllClose($g_CDP_FfmpegHandle)
 	EndIf
 
     _CDP_SendCommand($oSelf, "Browser.close")
@@ -1746,16 +1745,19 @@ Func test($text)
 	; get the test environment from a release datapool if it exists
 	if FileExists(@ScriptDir & "\Data\Pools\Release.csv") Then $g_CDP_TestEnv = testdata("Release", "Test Environment")
 
+	$testResultsPath = @ScriptDir & "\test-results\" & $text
+	if Not FileExists($testResultsPath) Then DirCreate($testResultsPath)
+	FileDelete($testResultsPath & "\*.*")
+
     if $cdp.config.video = $CDPVIDEO_ON Then
-		$videoPath = @ScriptDir & "\test-results\" & $text
-		if Not FileExists($videoPath) Then DirCreate($videoPath)
-		$g_ffmpegHandle = DllOpen("FFMpegRecorder.dll")
-		DllCall($g_ffmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $videoPath & "\video.webm")
+		$g_CDP_FfmpegHandle = DllOpen("FFMpegRecorder.dll")
+		DllCall($g_CDP_FfmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $testResultsPath & "\video.webm")
 		$g_fChromeStartTime = 0
 	EndIf
 
 	Local $test = _AutoItObject_Create()
-	;_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddProperty($test, "timer", $ELSCOPE_READONLY, TimerInit())
 	_AutoItObject_AddProperty($test, "environment", $ELSCOPE_READONLY, $g_CDP_TestEnv)
 	_AutoItObject_AddDestructor($test, "_CDP_Test_End")
 	Return $test
@@ -1805,6 +1807,14 @@ Func _CDP_Test_Step_End($oSelf)
 EndFunc
 
 Func _CDP_Test_End($oSelf)
+
+	__CDP_ConsoleWrite("⏱️ Test finished: " & $oSelf.text & " (" & __CDP__FormatDuration(TimerDiff($oSelf.timer)) & ")" & @CRLF)
+
+    if $cdp.config.video = $CDPVIDEO_ON Then
+		$videoPath = @ScriptDir & "\test-results\" & $oSelf.text & "\video.webm"
+		if FileExists($videoPath) Then __CDP_ConsoleWrite("🎥 Video: " & $videoPath & @CRLF)
+	EndIf
+
 	$cdp.state.indentLevel = $cdp.state.indentLevel - 1
 EndFunc
 
@@ -2352,6 +2362,21 @@ EndFunc
 
 Func __CDP_ConsoleWriteUTF8Enterprise($sText)
 	if $cdp.config.enterpriseMode = True Then __CDP_ConsoleWriteUTF8(StringFormat("[%i-%02i-%02i %02i꞉%02i꞉%02i.%03i] %s", @YEAR, @MON, @MDAY, @HOUR, @MIN, @SEC, @MSEC, $sText))
+EndFunc
+
+Func __CDP__FormatDuration($ms)
+    If $ms < 1000 Then Return $ms & " ms"
+
+    Local $sec = $ms / 1000
+    If $sec < 60 Then Return Round($sec, 1) & " s"
+
+    Local $min = Int($sec / 60)
+    Local $rem = Round(Mod($sec, 60), 1)
+    If $min < 60 Then Return $min & "m " & $rem & "s"
+
+    Local $hr = Int($min / 60)
+    Local $minRem = Mod($min, 60)
+    Return $hr & "h " & $minRem & "m " & Int($rem) & "s"
 EndFunc
 
 ; Override for __Au3Obj_FunctionProxy from AutoItObject.au3
