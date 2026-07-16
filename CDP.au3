@@ -1332,7 +1332,7 @@ Func _CDP_Locator_ScrollIntoView($oSelf)
 
 EndFunc
 
-Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
+Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = $cdp.config.timeout)
     Local $lastLeft = -1, $lastTop = -1
 
     Local $t = TimerInit()
@@ -2110,7 +2110,7 @@ Func _CDP_Downloads_DeleteFile($fileMask)
 	FileDelete(@UserProfileDir & "\Downloads\" & $fileMask)
 EndFunc
 
-Func _CDP_Downloads_WaitForFile($filename, $timeoutMs = 10000)
+Func _CDP_Downloads_WaitForFile($filename, $timeoutMs = $cdp.config.timeout)
     Local $end = TimerInit()
     While Not FileExists(@UserProfileDir & "\Downloads\" & $filename)
         Sleep(50)
@@ -2119,7 +2119,7 @@ Func _CDP_Downloads_WaitForFile($filename, $timeoutMs = 10000)
     Return True
 EndFunc
 
-Func WaitForFile($path, $timeoutMs = 5000)
+Func WaitForFile($path, $timeoutMs = $cdp.config.timeout)
     Local $end = TimerInit()
     While Not FileExists($path)
         Sleep(50)
