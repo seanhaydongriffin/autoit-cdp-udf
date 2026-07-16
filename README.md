@@ -264,7 +264,7 @@ More detail on modern CDP and BiDi automation in this [Youtube video](https://yo
 | **Dialog handling** | ✔️ | ✔️ |
 | **Screenshot** | ✔️ | ✔️ |
 | **PDF generation** | ❌ | ✔️ |
-| **Video recording** | ❌ | ✔️ |
+| **Video recording** | ✔️ | ✔️ |
 
 ## Requirements
 
