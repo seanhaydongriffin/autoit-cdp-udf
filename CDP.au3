@@ -383,7 +383,7 @@ Func _CDP_NewParams()
     Return ObjCreate("Scripting.Dictionary")
 EndFunc
 
-Func _CDP_WaitForLoad($oContext, $timeout = 20000)
+Func _CDP_WaitForLoad($oContext, $timeout = $cdp.config.timeout)
 
     If Not $g_CDP_Browsers.Exists($oContext.wsPort) Then Return False
 
@@ -759,7 +759,7 @@ EndFunc
 
 Func _CDP_Browser_GetNewPage($oSelf)
 
-	$timeout = 10000
+	$timeout = $cdp.config.timeout
 
     ; Wait for response
     Local $t = TimerInit()
@@ -837,10 +837,7 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _CDP_SendCommand($oPage, "Runtime.enable")
     ;_CDP_SendSync($oPage, "Network.enable")
 
-
-	_CDP_SendCommand($oPage, "Page.startScreencast", _JsonC_Object().add("format", "jpeg").add("quality", 80).add("maxWidth", 1280).add("maxHeight", 720))
-
-
+	if $cdp.config.video = $CDPVIDEO_ON Then _CDP_SendCommand($oPage, "Page.startScreencast", _JsonC_Object().add("format", "jpeg").add("quality", 80).add("maxWidth", 1280).add("maxHeight", 720))
 
     Return $oPage
 
