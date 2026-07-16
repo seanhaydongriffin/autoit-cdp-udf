@@ -221,3 +221,10 @@ With test("Basic Inputs test")
 EndWith
 
 $chrome.close()
+
+$ans = MsgBox($MB_OKCANCEL, "Playback test", "Do you want to playback the test video?")
+if $ans = $IDOK Then
+	$chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
+	$page = $chrome.newPage()
+	$page.goto(@ScriptDir & "\test-results\Basic Inputs test\video.webm")
+EndIf

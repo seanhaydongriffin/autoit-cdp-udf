@@ -6,7 +6,6 @@
 
 ;$cdp.config.debug = True
 
-$timer = TimerInit()
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.newPage()
 
@@ -221,5 +220,3 @@ With test("Basic Inputs test")
 EndWith
 
 $chrome.close()
-$runtime = TimerDiff($timer)
-ConsoleWrite('Time to run the script: ' & $runtime & ' ms' & @CRLF)

@@ -737,7 +737,6 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
 
     _AutoItObject_AddMethod($oPage, "goto",      	"_CDP_Page_Goto")
     _AutoItObject_AddMethod($oPage, "locator",    	"_CDP_Page_Locator")
-    _AutoItObject_AddMethod($oPage, "locatorNow", 	"_CDP_Page_LocatorNow")
     _AutoItObject_AddMethod($oPage, "evaluate",  	"_CDP_Page_Evaluate")
 
 	; Add getter methods
@@ -811,7 +810,6 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     ; Add action methods
     _AutoItObject_AddMethod($oPage, "goto",      	"_CDP_Page_Goto")
     _AutoItObject_AddMethod($oPage, "locator",    	"_CDP_Page_Locator")
-    _AutoItObject_AddMethod($oPage, "locatorNow", 	"_CDP_Page_LocatorNow")
     _AutoItObject_AddMethod($oPage, "evaluate",  	"_CDP_Page_Evaluate")
     _AutoItObject_AddMethod($oPage, "bringToFront",	"_CDP_Page_BringToFront")
     _AutoItObject_AddMethod($oPage, "setContent",	"_CDP_Page_SetContent")
@@ -1016,18 +1014,13 @@ Exit
 
 EndFunc
 
-
 ; "DOM.requestNode" the slowest - often also requires "DOM.getDocument" - about 170ms
 ; "DOM.describeNode" is fast but produces a backendNodeId not a nodeId
 ;	can pass this backendNodeId into "DOM.pushNodesByBackendIdsToFrontend" - it is slow about 175ms
 
-
-
-
 Func _CDP_Page_Locator($oSelf, $selector)
 
     Local $type = ""
-	Local $nodeIdVal = Null
 
     ; Explicit prefixes
     If StringLeft($selector, 6) = "xpath=" Then
@@ -1054,234 +1047,84 @@ Func _CDP_Page_Locator($oSelf, $selector)
     Else
         $expr = "document.querySelector(`" & $selector & "`)"
     EndIf
-
-	$timeout = 10000
-
-    ; Wait for response
-    Local $t = TimerInit()
-    While TimerDiff($t) < $timeout
-
-		Local $resp = _CDP_Evaluate($oSelf, $expr)
-
-		; Parse objectId
-		Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
-
-		if $objectIdObj <> Null Then
-
-			Local $objectIdVal = $objectIdObj.value()
-
-			; Create the Locator object
-			Local $oLocator = _AutoItObject_Create()
-
-			; Add action methods
-			_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
-			_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; done
-			_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; done
-			_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done
-			_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")											; todo - Reqs CDP Commands Input.dispatchTouchEvent
-			_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; done
-			_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")									; done
-			_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")										; todo - Reqs CDP Commands Input.dispatchKeyEvent
-			_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; done
-			_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; done
-			_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; done
-			_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; done
-			_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; done
-			_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; done
-			_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
-			_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo - Reqs CDP Commands DOM.setFileInputFiles
-			_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo - Reqs CDP Commands DOM.dispatchEvent
-			_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done
-			_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
-
-			; Add getter methods
-			_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done
-			_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done
-			_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done
-			_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")			; done
-			_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done
-			_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done
-			_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done
-			_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done
-			_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")							; todo - Reqs CDP Commands DOM.getBoxModel
-			_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")								; todo - Reqs CDP Commands DOM.getBoxModel, Page.captureScreenshot
-			_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")									; todo - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "evaluateAll", "_CDP_Locator_EvaluateAll")							; todo - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "elementHandle", "_CDP_Locator_ElementHandle")						; todo - Reqs CDP Commands DOM.resolveNode
-			_AutoItObject_AddMethod($oLocator, "allInnerTexts", "_CDP_Locator_AllInnerTexts")						; todo - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "allTextContents", "_CDP_Locator_AllTextContents")					; todo - Reqs CDP Commands Runtime.callFunctionOn
-			_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")										; todo - Reqs CDP Commands DOM.querySelectorAll
-
-			; Add state methods
-			_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done
-			_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done
-			_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done
-			_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")								; done
-			_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")								; done
-			_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done
-
-			; Add waiting methods
-			_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")									; todo - Reqs CDP Commands DOM.querySelector, Runtime.callFunctionOn, DOM.getBoxModel
-			_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")			; todo - Reqs CDP Commands Runtime.callFunctionOn, DOM.getBoxModel
-			_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")					; todo - Reqs CDP Commands DOM.querySelector, DOM.querySelectorAll
-
-			; Add locator-creation methods
-			_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")									; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")										; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")											; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "first", "_CDP_Locator_First")										; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "last", "_CDP_Locator_Last")											; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByRole", "_CDP_Locator_GetByRole")								; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByText", "_CDP_Locator_GetByText")								; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByLabel", "_CDP_Locator_GetByLabel")								; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByPlaceholder", "_CDP_Locator_GetByPlaceholder")					; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByAltText", "_CDP_Locator_GetByAltText")							; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByTitle", "_CDP_Locator_GetByTitle")								; todo - Reqs CDP Commands No CDP — internal selector logic
-			_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")							; todo - Reqs CDP Commands No CDP — internal selector logic
-
-			; Add properties
-			_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
-			_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
-			_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
-			_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
-			_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
-			_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, 0)
-			_AutoItObject_AddProperty($oLocator, "bboxLeft", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxTop", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxRight", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxBottom", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxWidth", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxHeight", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxCenterX", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "bboxCenterY", $ELSCOPE_PUBLIC, -1)
-			_AutoItObject_AddProperty($oLocator, "value", $ELSCOPE_PUBLIC, "")
-
-			Return $oLocator
-		EndIf
-
-		;ConsoleWrite("Retrying locator." & @CRLF)
-        Sleep(1)
-    WEnd
-
-	ConsoleWrite("Timed out." & @CRLF)
-	Return Null
-
-EndFunc
-
-Func _CDP_Page_LocatorNow($oSelf, $selector)
-
-    Local $type = ""
-
-    ; Explicit prefixes
-    If StringLeft($selector, 6) = "xpath=" Then
-        $type = "xpath"
-        $selector = StringTrimLeft($selector, 6)
-
-    ElseIf StringLeft($selector, 4) = "css=" Then
-        $type = "css"
-        $selector = StringTrimLeft($selector, 4)
-
-    ; Auto-detect XPath
-    ElseIf StringLeft($selector, 2) = "//" Then
-        $type = "xpath"
-
-    ; Auto-detect CSS
-    Else
-        $type = "css"
-    EndIf
-
-    Local $expr = ""
-
-    If $type = "xpath" Then
-		$expr = 'document.evaluate("' & $selector & '", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue'
-    Else
-        $expr = "document.querySelector(`" & $selector & "`)"
-    EndIf
-
-	Local $resp = _CDP_Evaluate($oSelf, $expr)
-
-	; Parse objectId
-	Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
-	if $objectIdObj = Null Then Return Null
-	Local $objectIdVal = $objectIdObj.value()
 
 	; Create the Locator object
 	Local $oLocator = _AutoItObject_Create()
-	Local $oExpect = _AutoItObject_Create()
 
 	; Add action methods
 	_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
-	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")
-	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")
-	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")
-	_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")
-	_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")
-	_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")
-	_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")
-	_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")
-	_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")
-	_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")
-	_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")
-	_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")
-	_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")
-	_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")
-	_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")
-	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")
-	_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")
-	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")
+	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; done
+	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; done
+	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done
+	_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")											; todo - Reqs CDP Commands Input.dispatchTouchEvent
+	_AutoItObject_AddMethod($oLocator, "fill", "_CDP_Locator_Fill")											; done
+	_AutoItObject_AddMethod($oLocator, "sendKeys", "_CDP_Locator_SendKeys")									; done
+	_AutoItObject_AddMethod($oLocator, "press", "_CDP_Locator_Press")										; todo - Reqs CDP Commands Input.dispatchKeyEvent
+	_AutoItObject_AddMethod($oLocator, "check", "_CDP_Locator_Check")										; done
+	_AutoItObject_AddMethod($oLocator, "uncheck", "_CDP_Locator_Uncheck")									; done
+	_AutoItObject_AddMethod($oLocator, "setChecked", "_CDP_Locator_SetChecked")								; done
+	_AutoItObject_AddMethod($oLocator, "selectOption", "_CDP_Locator_SelectOption")							; done
+	_AutoItObject_AddMethod($oLocator, "focus", "_CDP_Locator_Focus")										; done
+	_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; done
+	_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo - Reqs CDP Commands Runtime.callFunctionOn
+	_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
+	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo - Reqs CDP Commands DOM.setFileInputFiles
+	_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo - Reqs CDP Commands DOM.dispatchEvent
+	_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done
+	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
 
 	; Add getter methods
-	_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")
-	_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")
-	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")
-	_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")
-	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")
-	_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")
-	_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")
-	_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")
-	_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")
-	_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")
-	_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")
-	_AutoItObject_AddMethod($oLocator, "evaluateAll", "_CDP_Locator_EvaluateAll")
-	_AutoItObject_AddMethod($oLocator, "elementHandle", "_CDP_Locator_ElementHandle")
-	_AutoItObject_AddMethod($oLocator, "allInnerTexts", "_CDP_Locator_AllInnerTexts")
-	_AutoItObject_AddMethod($oLocator, "allTextContents", "_CDP_Locator_AllTextContents")
-	_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")
+	_AutoItObject_AddMethod($oLocator, "textContent", "_CDP_Locator_TextContent")							; done
+	_AutoItObject_AddMethod($oLocator, "innerText", "_CDP_Locator_InnerText")								; done
+	_AutoItObject_AddMethod($oLocator, "innerTextCRStripped", "_CDP_Locator_InnerTextCRStripped")			; done
+	_AutoItObject_AddMethod($oLocator, "innerTextLFStripped", "_CDP_Locator_InnerTextLFStripped")			; done
+	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done
+	_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done
+	_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done
+	_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done
+	_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")							; todo - Reqs CDP Commands DOM.getBoxModel
+	_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")								; todo - Reqs CDP Commands DOM.getBoxModel, Page.captureScreenshot
+	_AutoItObject_AddMethod($oLocator, "evaluate", "_CDP_Locator_Evaluate")									; todo - Reqs CDP Commands Runtime.callFunctionOn
+	_AutoItObject_AddMethod($oLocator, "evaluateAll", "_CDP_Locator_EvaluateAll")							; todo - Reqs CDP Commands Runtime.callFunctionOn
+	_AutoItObject_AddMethod($oLocator, "elementHandle", "_CDP_Locator_ElementHandle")						; todo - Reqs CDP Commands DOM.resolveNode
+	_AutoItObject_AddMethod($oLocator, "allInnerTexts", "_CDP_Locator_AllInnerTexts")						; todo - Reqs CDP Commands Runtime.callFunctionOn
+	_AutoItObject_AddMethod($oLocator, "allTextContents", "_CDP_Locator_AllTextContents")					; todo - Reqs CDP Commands Runtime.callFunctionOn
+	_AutoItObject_AddMethod($oLocator, "count", "_CDP_Locator_Count")										; todo - Reqs CDP Commands DOM.querySelectorAll
 
 	; Add state methods
-	_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")
-	_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")
-	_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")
-	_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")
-	_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")
-	_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")
+	_AutoItObject_AddMethod($oLocator, "isVisible", "_CDP_Locator_IsVisible")								; done
+	_AutoItObject_AddMethod($oLocator, "isHidden", "_CDP_Locator_IsHidden")									; done
+	_AutoItObject_AddMethod($oLocator, "isEnabled", "_CDP_Locator_IsEnabled")								; done
+	_AutoItObject_AddMethod($oLocator, "isDisabled", "_CDP_Locator_IsDisabled")								; done
+	_AutoItObject_AddMethod($oLocator, "isEditable", "_CDP_Locator_IsEditable")								; done
+	_AutoItObject_AddMethod($oLocator, "isChecked", "_CDP_Locator_IsChecked")								; done
 
 	; Add waiting methods
-	_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")
-	_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")
-	_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")
+	_AutoItObject_AddMethod($oLocator, "waitFor", "_CDP_Locator_WaitFor")									; todo - Reqs CDP Commands DOM.querySelector, Runtime.callFunctionOn, DOM.getBoxModel
+	_AutoItObject_AddMethod($oLocator, "waitForElementState", "_CDP_Locator_WaitForElementState")			; todo - Reqs CDP Commands Runtime.callFunctionOn, DOM.getBoxModel
+	_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")					; todo - Reqs CDP Commands DOM.querySelector, DOM.querySelectorAll
 
 	; Add locator-creation methods
-	_AutoItObject_AddMethod($oLocator, "locator", "_CDP_Locator_Locator")
-	_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")
-	_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")
-	_AutoItObject_AddMethod($oLocator, "first", "_CDP_Locator_First")
-	_AutoItObject_AddMethod($oLocator, "last", "_CDP_Locator_Last")
-	_AutoItObject_AddMethod($oLocator, "getByRole", "_CDP_Locator_GetByRole")
-	_AutoItObject_AddMethod($oLocator, "getByText", "_CDP_Locator_GetByText")
-	_AutoItObject_AddMethod($oLocator, "getByLabel", "_CDP_Locator_GetByLabel")
-	_AutoItObject_AddMethod($oLocator, "getByPlaceholder", "_CDP_Locator_GetByPlaceholder")
-	_AutoItObject_AddMethod($oLocator, "getByAltText", "_CDP_Locator_GetByAltText")
-	_AutoItObject_AddMethod($oLocator, "getByTitle", "_CDP_Locator_GetByTitle")
-	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")
+	_AutoItObject_AddMethod($oLocator, "_locate", "_CDP_Locator_Locate")									; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")										; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")											; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "first", "_CDP_Locator_First")										; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "last", "_CDP_Locator_Last")											; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByRole", "_CDP_Locator_GetByRole")								; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByText", "_CDP_Locator_GetByText")								; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByLabel", "_CDP_Locator_GetByLabel")								; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByPlaceholder", "_CDP_Locator_GetByPlaceholder")					; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByAltText", "_CDP_Locator_GetByAltText")							; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByTitle", "_CDP_Locator_GetByTitle")								; todo - Reqs CDP Commands No CDP — internal selector logic
+	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")							; todo - Reqs CDP Commands No CDP — internal selector logic
 
 	; Add properties
+	_AutoItObject_AddProperty($oLocator, "selectorExpr", $ELSCOPE_READONLY, $expr)
 	_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
 	_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
 	_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
 	_AutoItObject_AddProperty($oLocator, "wsPort", $ELSCOPE_PUBLIC, $oSelf.wsPort)
-	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, $objectIdVal)
+	_AutoItObject_AddProperty($oLocator, "objectId", $ELSCOPE_PUBLIC, 0)
 	_AutoItObject_AddProperty($oLocator, "nodeId", $ELSCOPE_PUBLIC, 0)
 	_AutoItObject_AddProperty($oLocator, "bboxLeft", $ELSCOPE_PUBLIC, -1)
 	_AutoItObject_AddProperty($oLocator, "bboxTop", $ELSCOPE_PUBLIC, -1)
@@ -1301,6 +1144,30 @@ EndFunc
 
 #region --- Locator Class ---
 
+Func _CDP_Locator_Locate($oSelf, $timeout = $cdp.config.timeout)
+
+    ; Wait for response
+    Local $t = TimerInit()
+    While TimerDiff($t) < $timeout
+
+		Local $resp = _CDP_Evaluate($oSelf, $oSelf.selectorExpr)
+
+		; Parse objectId
+		Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
+
+		if $objectIdObj <> Null Then
+			$oSelf.objectId = $objectIdObj.value()
+			Return $oSelf
+		EndIf
+
+		;ConsoleWrite("Retrying locator." & @CRLF)
+        Sleep(1)
+    WEnd
+
+	ConsoleWrite("Timed out." & @CRLF)
+	Return Null
+
+EndFunc
 
 Func _CDP_Locator_ObjectToNode($oSelf)
 
@@ -1325,7 +1192,7 @@ EndFunc
 
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
-	_CDP_Locator_ScrollIntoView($oSelf)
+	$oSelf.scrollIntoView()
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	if $waitForLoad = True Then _CDP_WaitForLoad($oSelf)
@@ -1335,8 +1202,8 @@ EndFunc
 
 Func _CDP_Locator_DoubleClick($oSelf, $waitForLoad = False)
 
-	_CDP_Locator_ScrollIntoView($oSelf)
-    _CDP_Locator_BoundingBox($oSelf)
+	$oSelf.scrollIntoView()
+	$oSelf.boundingBox()
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 2).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
@@ -1348,7 +1215,7 @@ EndFunc
 
 Func _CDP_Locator_Hover($oSelf)
 
-	_CDP_Locator_ScrollIntoView($oSelf)
+	$oSelf.scrollIntoView()
     ; Dispatch mouseMoved event
     _CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	return $oSelf
@@ -1361,6 +1228,7 @@ EndFunc
 
 Func _CDP_Locator_Fill($oSelf, $value)
 
+	$oSelf._locate()
     _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function(value) { this.value = value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); }").add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $value))))
 	return $oSelf
 
@@ -1368,7 +1236,9 @@ EndFunc
 
 Func _CDP_Locator_SendKeys($oSelf, $sText, $iDelay = 0)
 
+	$oSelf._locate()
 	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("objectId", $oSelf.objectId))
+
 	For $i = 1 To StringLen($sText)
         Local $ch = StringMid($sText, $i, 1)
         Local $keyCode = Asc($ch)
@@ -1382,7 +1252,8 @@ Func _CDP_Locator_SendKeys($oSelf, $sText, $iDelay = 0)
 		EndIf
         ; Optional delay
         If $iDelay > 0 Then Sleep($iDelay)
-    Next
+	Next
+
     Return $oSelf
 
 EndFunc
@@ -1417,7 +1288,7 @@ EndFunc
 
 Func _CDP_Locator_SelectOption($oSelf, $value)
 
-	_CDP_Locator_ScrollIntoView($oSelf)
+	$oSelf.scrollIntoView()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function(value) { const opt = Array.from(this.options).find(o => o.value === value || o.label === value); if (!opt) return false; this.value = opt.value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); return true; }").add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $value))).add("returnByValue", True))
 	;Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 	Return $oSelf
@@ -1426,6 +1297,7 @@ EndFunc
 
 Func _CDP_Locator_Focus($oSelf)
 
+	$oSelf._locate()
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 
@@ -1433,6 +1305,7 @@ EndFunc
 
 Func _CDP_Locator_Blur($oSelf)
 
+	$oSelf._locate()
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.blur(); }"))
 
 EndFunc
@@ -1455,6 +1328,7 @@ EndFunc
 
 Func _CDP_Locator_ScrollIntoView($oSelf)
 
+	$oSelf._locate()
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.scrollIntoView({block: 'center', inline: 'center'}); }").add("awaitPromise", True))
 	__CDP_Locator_WaitForStableBox($oSelf)
 	return $oSelf
@@ -1466,7 +1340,7 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
 
     Local $t = TimerInit()
     While TimerDiff($t) < $timeout
-        _CDP_Locator_BoundingBox($oSelf)
+		$oSelf.boundingBox()
         If @error Then ContinueLoop ; Return SetError(1,0,False)
 
 		; If position hasn't changed for 2 consecutive checks → stable
@@ -1480,16 +1354,13 @@ Func __CDP_Locator_WaitForStableBox($oSelf, $timeout = 1000)
     Return SetError(2,0,False)
 EndFunc
 
-
-
-
-
 Func _CDP_Locator_ScrollIntoViewIfNeeded($oSelf)
 	; Todo
 EndFunc
 
 Func _CDP_Locator_TextContent($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.textContent; }").add("returnByValue", True))
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
@@ -1498,6 +1369,7 @@ EndFunc
 
 Func _CDP_Locator_InnerText($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerText; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Local $valueVal = _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1523,6 +1395,7 @@ EndFunc
 
 Func _CDP_Locator_InnerHTML($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerHTML; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1531,6 +1404,7 @@ EndFunc
 
 Func _CDP_Locator_InputValue($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.value; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1539,6 +1413,7 @@ EndFunc
 
 Func _CDP_Locator_GetAttribute($oSelf, $name)
 
+	$oSelf._locate()
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 
     Local $resp = _CDP_SendSync($oSelf, "DOM.getAttributes", _JsonC_Object().add("nodeId", $oSelf.nodeId))
@@ -1557,6 +1432,7 @@ EndFunc
 
 Func _CDP_Locator_BoundingBox($oSelf)
 
+	$oSelf._locate()
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 
     ; 3. Get box model
@@ -1620,6 +1496,7 @@ EndFunc
 
 Func __CDP_Locator_IsVisibleValue($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { const r = this.getBoundingClientRect(); return !!(r.width && r.height); }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1638,6 +1515,7 @@ EndFunc
 
 Func __CDP_Locator_IsDisabledValue($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.disabled; }").add("returnByValue", True))
 	; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
@@ -1656,6 +1534,7 @@ Func _CDP_Locator_IsEditable($oSelf)
 
     ; Playwright-equivalent logic:
     ; editable = !disabled && !readOnly
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return !this.disabled && !this.readOnly; }").add("returnByValue", True))
     ; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
@@ -1664,6 +1543,7 @@ EndFunc
 
 Func _CDP_Locator_IsChecked($oSelf)
 
+	$oSelf._locate()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
 	; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
@@ -1679,10 +1559,6 @@ Func _CDP_Locator_WaitForElementState($oSelf)
 EndFunc
 
 Func _CDP_Locator_WaitForSelector($oSelf)
-	; Todo
-EndFunc
-
-Func _CDP_Locator_Locator($oSelf)
 	; Todo
 EndFunc
 

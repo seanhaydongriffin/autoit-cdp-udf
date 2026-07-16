@@ -5,21 +5,10 @@
 
 #include "CDP.au3"
 
-$hTimer = TimerInit()
-
 $chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
 $page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
-
-$fDiff = TimerDiff($hTimer)
-ConsoleWrite(@CRLF & "> BasicWebPageWithStandardBrowser() took " & $fDiff & " ms." & @CRLF & @CRLF)
-
-Func testlog($iLine = @ScriptLineNumber)
-	Return $iLine
-EndFunc
-
-Global $fred
 
 Func BasicWebPageTest($chrome, $page)
 
@@ -82,7 +71,7 @@ Func BasicWebPageTest($chrome, $page)
 		EndWith
 
 		With teststep("Verify invalid locator")
-			.expect($page.locatorNow("//button[@id='invalid']"), "invalid locator").toBeNull(@ScriptLineNumber)
+			.expect($page.locator("//button[@id='invalid']")._locate(), "invalid locator").toBeNull(@ScriptLineNumber)
 		EndWith
 
 	EndWith
