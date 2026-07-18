@@ -15,7 +15,7 @@ EndFunc
 
 Func UI_Practice_Pages_Pages_Forms_Text_Inputs_submit($oSelf, $Search)
     $qaPage1.locator("//input[@id='search-input']").sendKeys($Search)
-    $qaPage1.locator("//input[@type='submit' and @name='submitbutton']").click()
+    $qaPage1.locator("//input[@type='submit' and @name='submitbutton']").click(True)
 EndFunc
 
 #EndRegion

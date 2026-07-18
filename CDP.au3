@@ -32,10 +32,30 @@ Global $CDP_DISABLE_ALIASES
 Global Enum $CDP_BROWSER, $CDP_PAGE
 
 Global Enum _
+    $CDPBROWSER_CHROME, _
+    $CDPBROWSER_EDGE, _
+    $CDPBROWSER_FIREFOX, _
+    $CDPBROWSER_CHROMIUM, _
+    $CDPBROWSER_CHROME_BETA, _
+    $CDPBROWSER_CHROME_DEV, _
+    $CDPBROWSER_CHROME_CANARY, _
+    $CDPBROWSER_EDGE_BETA, _
+    $CDPBROWSER_EDGE_DEV, _
+    $CDPBROWSER_EDGE_CANARY
+
+Global Enum _
 		$CDPVIDEO_ON, _
 		$CDPVIDEO_OFF
 		; $CDPVIDEO_RETAIN_ON_FAILURE, _			; todo
 		;$CDPVIDEO_ON_FIRST_RETRY					; todo
+
+Global Enum _
+		$CDPSTATE_ATTACHED, _
+		$CDPSTATE_DETACHED, _
+		$CDPSTATE_VISIBLE, _
+		$CDPSTATE_HIDDEN
+
+Global Const $CDP_SECOND = 1000, $CDP_MINUTE = 60 * $CDP_SECOND, $CDP_HOUR = 60 * $CDP_MINUTE
 
 ; Global CDP registry: wsHandle → state object
 Global $g_CDP_Browsers = ObjCreate("Scripting.Dictionary")
@@ -404,9 +424,11 @@ EndFunc
 
 
 Func _CDP_Evaluate($oContext, $sExpression)
-
     Return _CDP_SendSync($oContext, "Runtime.evaluate", _JsonC_Object().add("expression", $sExpression))
+EndFunc
 
+Func _CDP_EvaluateValue($oContext, $sExpression)
+    Return _CDP_SendSync($oContext, "Runtime.evaluate", _JsonC_Object().add("expression", $sExpression).add("returnByValue", True))
 EndFunc
 
 Func _OnPageLoad($wsKey, $msgObj)
@@ -514,30 +536,62 @@ Func _CDP_Browser_Exists($oSelf, $port)
 	Return $g_CDP_Browsers.Exists($port)
 EndFunc
 
-Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default, $clearCookies = False)
+;Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default, $clearCookies = False)
+Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null)
 
 	if $cdp.config.infoPopups = True Then SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
 
-	if $browser = Default Then $browser = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
-	if $port = Default Then $port = 9222
-	if $startupSwitches = Default Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking --enable-automation --silent-launch"
-	if $profile = Default Then $profile = @ScriptDir & "\chromeprofile"
-	if $windowSize <> Default Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
+	Local $path, $port = Null, $startupSwitches = Null, $profile = Null, $windowSize = Null, $clearCookies = Null, $version = Null
+
+	Switch $browser
+		Case $CDPBROWSER_CHROME
+			$path = @ProgramFilesDir & "\Google\Chrome\Application\chrome.exe"
+		Case $CDPBROWSER_EDGE
+			$path = EnvGet("ProgramFiles(x86)") & "\Microsoft\Edge\Application\msedge.exe"
+		Case $CDPBROWSER_FIREFOX
+			$path = @ProgramFilesDir & "\Mozilla Firefox\firefox.exe"
+		Case $CDPBROWSER_CHROMIUM
+			$path = @ProgramFilesDir & "\Chromium\Application\chrome.exe"
+		Case $CDPBROWSER_CHROME_BETA
+			$path = @ProgramFilesDir & "\Google\Chrome Beta\Application\chrome.exe"
+		Case $CDPBROWSER_CHROME_DEV
+			$path = @ProgramFilesDir & "\Google\Chrome Dev\Application\chrome.exe"
+		Case $CDPBROWSER_CHROME_CANARY
+			$path = @ProgramFilesDir & "\Google\Chrome SxS\Application\chrome.exe"
+		Case $CDPBROWSER_EDGE_BETA
+			$path = @ProgramFilesDir & "\Microsoft\Edge Beta\Application\msedge.exe"
+		Case $CDPBROWSER_EDGE_DEV
+			$path = @ProgramFilesDir & "\Microsoft\Edge Dev\Application\msedge.exe"
+		Case $CDPBROWSER_EDGE_CANARY
+			$path = @ProgramFilesDir & "\Microsoft\Edge SxS\Application\msedge.exe"
+		Case Else
+			; if user-defined browser
+			If FileExists($browser) Then $path = $browser
+	EndSwitch
+
+    if $jOptions <> Null Then
+        $port                	= $jOptions.get("port").value()
+        $startupSwitches     	= $jOptions.get("startupSwitches").value()
+        $profile             	= $jOptions.get("profile").value()
+        $windowSize          	= $jOptions.get("windowSize").value()
+        $clearCookies        	= $jOptions.get("clearCookies").value()
+        $version	        	= $jOptions.get("version").value()
+    EndIf
+
+    if $port = Null 			Then $port = 9222
+    if $startupSwitches = Null 	Then $startupSwitches = "--no-first-run --no-default-browser-check --disable-gpu --disable-dev-shm-usage --disable-extensions --disable-background-networking --disable-renderer-backgrounding --disable-sync --metrics-recording-only --mute-audio --hide-crash-restore-bubble --noerrdialogs --disable-infobars --disable-popup-blocking --enable-automation --silent-launch"
+    if $profile = Null 			Then $profile = @ScriptDir & "\chromeprofile"
+    if $windowSize <> Null 		Then $startupSwitches = $startupSwitches & ' --window-size=' & $windowSize
 
 	; force close any browser instances already on this port
 	$cdp.browser.forceClose($port)
 
-    If IsString($browser) And StringInStr($browser, "@") > 0 Then
-		; it's a browser specifier
-		$browserSpecifier = $browser
-		$browser = __CDP_ResolveBrowserSpecifier($browserSpecifier)
+    If $version <> Null Then
+		$path = __CDP_ResolveBrowserSpecifier($browser, $version)
 		if @error > 0 Then
-			ConsoleWrite('Browser specifier ' & $browserSpecifier & ' not found. Exiting.' & @CRLF)
+			ConsoleWrite('Browser ' & $path & ' not found. Exiting.' & @CRLF)
 			Exit
 		EndIf
-	ElseIf Not FileExists($browser) Then
-        ConsoleWrite('Browser path ' & $browser & ' not found. Exiting.' & @CRLF)
-        Exit
 	EndIf
 
 	; always delete previous sessions in the user profile
@@ -569,7 +623,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
 	EndIf
 
 	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
-	Local $cmd = '"' & $browser & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
+	Local $cmd = '"' & $path & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
 	if $cdp.config.debug = True Then __CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Running ' & $cmd & @CRLF)
     Run($cmd)
 
@@ -591,7 +645,6 @@ Func _CDP_Browser_Launch($oSelf, $browser = Default, $port = Default, $startupSw
     $oState.Add("nextTargetId", Null)
     $oState.Add("nextId",  1)
     $oState.Add("pageLoaded", False)
-    ;$oState.Add("type", $CDP_BROWSER)
 
 	$g_CDP_Browsers.Add($port, $oState)
 
@@ -822,6 +875,9 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddMethod($oPage, "content",     	"_CDP_Page_Content")
     _AutoItObject_AddMethod($oPage, "viewportSize",	"_CDP_Page_ViewportSize")
 
+	; Add waiting methods
+	_AutoItObject_AddMethod($oPage, "waitForSelector", "_CDP_Page_WaitForSelector")					; todo - Reqs CDP Commands DOM.querySelector, DOM.querySelectorAll
+
     ; Add properties
     _AutoItObject_AddProperty($oPage, "type", $ELSCOPE_READONLY, $CDP_PAGE)
     _AutoItObject_AddProperty($oPage, "parent", $ELSCOPE_READONLY, $parent)
@@ -909,6 +965,31 @@ Func _CDP_Page_ViewportSize($oSelf)
     $a[1] = $layoutViewport.get("clientHeight").value()
     Return $a
 
+EndFunc
+
+Func _CDP_Page_WaitForSelector($oSelf, $selector, $state = $CDPSTATE_ATTACHED, $timeoutMs = $cdp.config.timeout)
+    Local $t = TimerInit()
+    Do
+        Local $el = $oSelf.locatorNow($selector)
+
+        Switch $state
+            Case $CDPSTATE_ATTACHED
+                If $el <> Null Then Return $el
+
+            Case $CDPSTATE_DETACHED
+                If $el == Null Then Return True
+
+            Case $CDPSTATE_VISIBLE
+                If $el <> Null And $el.isVisible() Then Return $el
+
+            Case $CDPSTATE_HIDDEN
+                If $el == Null Or Not $el.isVisible() Then Return True
+        EndSwitch
+
+        Sleep(100)
+    Until TimerDiff($t) > $timeoutMs
+
+    Return SetError(1, 0, Null)
 EndFunc
 
 Func _CDP_Page_Screenshot($oSelf, $sPath, $bFullPage = True)
@@ -1051,6 +1132,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	; Add action methods
 	_AutoItObject_AddMethod($oLocator, "objectToNode", "_CDP_Locator_ObjectToNode")
 	_AutoItObject_AddMethod($oLocator, "click", "_CDP_Locator_Click")										; done
+	_AutoItObject_AddMethod($oLocator, "clickAt", "_CDP_Locator_ClickAt")										; done
 	_AutoItObject_AddMethod($oLocator, "dblClick", "_CDP_Locator_DoubleClick")								; done
 	_AutoItObject_AddMethod($oLocator, "hover", "_CDP_Locator_Hover")										; done
 	_AutoItObject_AddMethod($oLocator, "tap", "_CDP_Locator_Tap")											; todo - Reqs CDP Commands Input.dispatchTouchEvent
@@ -1102,6 +1184,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "waitForSelector", "_CDP_Locator_WaitForSelector")					; todo - Reqs CDP Commands DOM.querySelector, DOM.querySelectorAll
 
 	; Add locator-creation methods
+	_AutoItObject_AddMethod($oLocator, "_locateFast", "_CDP_Locator_LocateFast")							; todo - Reqs CDP Commands No CDP — internal selector logic
 	_AutoItObject_AddMethod($oLocator, "_locate", "_CDP_Locator_Locate")									; todo - Reqs CDP Commands No CDP — internal selector logic
 	_AutoItObject_AddMethod($oLocator, "filter", "_CDP_Locator_Filter")										; todo - Reqs CDP Commands No CDP — internal selector logic
 	_AutoItObject_AddMethod($oLocator, "nth", "_CDP_Locator_Nth")											; todo - Reqs CDP Commands No CDP — internal selector logic
@@ -1117,6 +1200,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 
 	; Add properties
 	_AutoItObject_AddProperty($oLocator, "selectorExpr", $ELSCOPE_READONLY, $expr)
+	_AutoItObject_AddProperty($oLocator, "parent", $ELSCOPE_READONLY, $oSelf)
 	_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
 	_AutoItObject_AddProperty($oLocator, "wsHandle", $ELSCOPE_PUBLIC, $oSelf.wsHandle)
 	_AutoItObject_AddProperty($oLocator, "sessionId", $ELSCOPE_PUBLIC, $oSelf.sessionId)
@@ -1141,23 +1225,25 @@ EndFunc
 
 #region --- Locator Class ---
 
+Func _CDP_Locator_LocateFast($oSelf)
+
+	; NO retry loop
+	Local $resp = _CDP_Evaluate($oSelf, $oSelf.selectorExpr)
+    Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
+
+	If $objectIdObj = Null Then Return Null
+
+	$oSelf.objectId = $objectIdObj.value()
+	Return $oSelf
+
+EndFunc
+
 Func _CDP_Locator_Locate($oSelf, $timeout = $cdp.config.timeout)
 
     ; Wait for response
     Local $t = TimerInit()
     While TimerDiff($t) < $timeout
-
-		Local $resp = _CDP_Evaluate($oSelf, $oSelf.selectorExpr)
-
-		; Parse objectId
-		Local $objectIdObj = _JsonC_Object($resp).get("result").get("result").get("objectId")
-
-		if $objectIdObj <> Null Then
-			$oSelf.objectId = $objectIdObj.value()
-			Return $oSelf
-		EndIf
-
-		;ConsoleWrite("Retrying locator." & @CRLF)
+		If $oSelf._locateFast() <> Null Then Return $oSelf
         Sleep(1)
     WEnd
 
@@ -1189,6 +1275,7 @@ EndFunc
 
 Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
+	if $oSelf._locate() = Null Then Return Null
 	$oSelf.scrollIntoView()
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
@@ -1197,10 +1284,20 @@ Func _CDP_Locator_Click($oSelf, $waitForLoad = False)
 
 EndFunc
 
+Func _CDP_Locator_ClickAt($oSelf, $offsetX, $offsetY)
+
+	if $oSelf._locate() = Null Then Return Null
+	$oSelf.scrollIntoView()
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxLeft + $offsetX).add("y", $oSelf.bboxTop + $offsetY))
+	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxLeft + $offsetX).add("y", $oSelf.bboxTop + $offsetY))
+	return $oSelf
+
+EndFunc
+
 Func _CDP_Locator_DoubleClick($oSelf, $waitForLoad = False)
 
+	if $oSelf._locate() = Null Then Return Null
 	$oSelf.scrollIntoView()
-	$oSelf.boundingBox()
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseReleased").add("button", "left").add("clickCount", 1).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
 	_CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mousePressed").add("button", "left").add("clickCount", 2).add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
@@ -1212,6 +1309,7 @@ EndFunc
 
 Func _CDP_Locator_Hover($oSelf)
 
+	if $oSelf._locate() = Null Then Return Null
 	$oSelf.scrollIntoView()
     ; Dispatch mouseMoved event
     _CDP_SendCommand($oSelf, "Input.dispatchMouseEvent", _JsonC_Object().add("type", "mouseMoved").add("x", $oSelf.bboxCenterX).add("y", $oSelf.bboxCenterY))
@@ -1220,12 +1318,15 @@ Func _CDP_Locator_Hover($oSelf)
 EndFunc
 
 Func _CDP_Locator_Tap($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_Fill($oSelf, $value)
 
-	$oSelf._locate()
+	if $oSelf._locate() = Null Then Return Null
     _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function(value) { this.value = value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); }").add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $value))))
 	return $oSelf
 
@@ -1233,7 +1334,7 @@ EndFunc
 
 Func _CDP_Locator_SendKeys($oSelf, $sText, $iDelay = 0)
 
-	$oSelf._locate()
+	if $oSelf._locate() = Null Then Return Null
 	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("objectId", $oSelf.objectId))
 
 	For $i = 1 To StringLen($sText)
@@ -1256,11 +1357,15 @@ Func _CDP_Locator_SendKeys($oSelf, $sText, $iDelay = 0)
 EndFunc
 
 Func _CDP_Locator_Press($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_Check($oSelf)
 
+	if $oSelf._locate() = Null Then Return Null
 	If $oSelf.isChecked() Then Return $oSelf
 	$oSelf.click()
 	Return $oSelf
@@ -1269,6 +1374,7 @@ EndFunc
 
 Func _CDP_Locator_Uncheck($oSelf)
 
+	if $oSelf._locate() = Null Then Return Null
 	If $oSelf.isChecked() = False Then Return $oSelf
 	$oSelf.click()
 	Return $oSelf
@@ -1277,6 +1383,7 @@ EndFunc
 
 Func _CDP_Locator_SetChecked($oSelf, $bState)
 
+	if $oSelf._locate() = Null Then Return Null
 	If $oSelf.isChecked() = $bState Then Return $oSelf
 	$oSelf.click()
 	Return $oSelf
@@ -1285,6 +1392,7 @@ EndFunc
 
 Func _CDP_Locator_SelectOption($oSelf, $value)
 
+	if $oSelf._locate() = Null Then Return Null
 	$oSelf.scrollIntoView()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function(value) { const opt = Array.from(this.options).find(o => o.value === value || o.label === value); if (!opt) return false; this.value = opt.value; this.dispatchEvent(new Event('input', { bubbles: true })); this.dispatchEvent(new Event('change', { bubbles: true })); return true; }").add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $value))).add("returnByValue", True))
 	;Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1294,7 +1402,7 @@ EndFunc
 
 Func _CDP_Locator_Focus($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locate() = Null Then Return Null
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 	_CDP_SendCommand($oSelf, "DOM.focus", _JsonC_Object().add("nodeId", $oSelf.nodeId))
 
@@ -1302,30 +1410,42 @@ EndFunc
 
 Func _CDP_Locator_Blur($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locate() = Null Then Return Null
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.blur(); }"))
 
 EndFunc
 
 Func _CDP_Locator_Clear($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_DragTo($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_SetInputFiles($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_DispatchEvent($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_ScrollIntoView($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null Then Return Null
     _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { this.scrollIntoView({block: 'center', inline: 'center'}); }").add("awaitPromise", True))
 	__CDP_Locator_WaitForStableBox($oSelf)
 	return $oSelf
@@ -1357,7 +1477,7 @@ EndFunc
 
 Func _CDP_Locator_TextContent($oSelf)
 
-	$oSelf._locate()
+	$oSelf._locateFast()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.textContent; }").add("returnByValue", True))
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
 
@@ -1366,7 +1486,7 @@ EndFunc
 
 Func _CDP_Locator_InnerText($oSelf)
 
-	$oSelf._locate()
+	$oSelf._locateFast()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerText; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Local $valueVal = _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1392,7 +1512,7 @@ EndFunc
 
 Func _CDP_Locator_InnerHTML($oSelf)
 
-	$oSelf._locate()
+	$oSelf._locateFast()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.innerHTML; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1401,7 +1521,7 @@ EndFunc
 
 Func _CDP_Locator_InputValue($oSelf)
 
-	$oSelf._locate()
+	$oSelf._locateFast()
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.value; }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1410,7 +1530,7 @@ EndFunc
 
 Func _CDP_Locator_GetAttribute($oSelf, $name)
 
-	$oSelf._locate()
+	if $oSelf._locate() = Null Then Return Null
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 
     Local $resp = _CDP_SendSync($oSelf, "DOM.getAttributes", _JsonC_Object().add("nodeId", $oSelf.nodeId))
@@ -1429,7 +1549,7 @@ EndFunc
 
 Func _CDP_Locator_BoundingBox($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null Then Return Null
 	if $oSelf.nodeId = 0 Then $oSelf.objectToNode()
 
     ; 3. Get box model
@@ -1463,37 +1583,80 @@ Func _CDP_Locator_BoundingBox($oSelf)
 	$oSelf.bboxCenterY = ($oSelf.bboxTop + $oSelf.bboxBottom) / 2
 EndFunc
 
-Func _CDP_Locator_Screenshot($oSelf)
-	; Todo
+Func _CDP_Locator_Screenshot($oSelf, $sFilePath = "")
+
+    ; Scroll into view plus get box model coordinates in the viewport space
+	$oSelf.scrollIntoView()
+
+	; Get scroll coordinates (to turn viewport space coordinates into document space)
+	Local $resp = _CDP_EvaluateValue($oSelf.parent, "({ x: window.scrollX, y: window.scrollY })")
+    Local $rect = _JsonC_Object($resp).get("result").get("result").get("value")
+	Local $scrollX = $rect.get("x").value
+	Local $scrollY = $rect.get("y").value
+
+    Local $resp = _CDP_SendSync($oSelf, "Page.captureScreenshot", _JsonC_Object().add("format", "png").add("captureBeyondViewport", False).add("clip", _JsonC_Object().add("x", $scrollX + $oSelf.bboxLeft).add("y", $scrollY + $oSelf.bboxTop).add("width", $oSelf.bboxWidth).add("height", $oSelf.bboxHeight).add("scale", 1)))
+	Local $base64 = _JsonC_Object($resp).get("result").get("data").value()
+
+	if StringLen($sFilePath) > 0 Then
+		Local $bPng = __CDP_Base64Decode($base64)
+		FileDelete($sFilePath)
+		FileWrite($sFilePath, $base64)
+	EndIf
+
+	Return $base64
+
 EndFunc
 
+
+
+
+
+
 Func _CDP_Locator_Evaluate($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_EvaluateAll($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_ElementHandle($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_AllInnerTexts($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_AllTextContents($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func _CDP_Locator_Count($oSelf)
+
+	$oSelf._locateFast()
 	; Todo
+
 EndFunc
 
 Func __CDP_Locator_IsVisibleValue($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null then Return 0
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { const r = this.getBoundingClientRect(); return !!(r.width && r.height); }").add("returnByValue", True))
     ; Extract the "result.value"
 	Return _JsonC_Object($resp).get("result").get("result").get("value").value()
@@ -1512,7 +1675,7 @@ EndFunc
 
 Func __CDP_Locator_IsDisabledValue($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null Then Return Null
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.disabled; }").add("returnByValue", True))
 	; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
@@ -1531,7 +1694,7 @@ Func _CDP_Locator_IsEditable($oSelf)
 
     ; Playwright-equivalent logic:
     ; editable = !disabled && !readOnly
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null Then Return Null
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return !this.disabled && !this.readOnly; }").add("returnByValue", True))
     ; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
@@ -1540,22 +1703,45 @@ EndFunc
 
 Func _CDP_Locator_IsChecked($oSelf)
 
-	$oSelf._locate()
+	if $oSelf._locateFast() = Null Then Return Null
     Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", "function() { return this.checked; }").add("returnByValue", True))
 	; Convert numeric 0/1 → AutoIt boolean
     Return (_JsonC_Object($resp).get("result").get("result").get("value").value() <> 0)
 
 EndFunc
 
-Func _CDP_Locator_WaitFor($oSelf)
-	; Todo
+
+Func _CDP_Locator_WaitFor($this, $state = $CDPSTATE_VISIBLE, $timeoutMs = $cdp.config.timeout)
+    Local $t = TimerInit()
+
+    Do
+		$located = $this._locateFast()
+
+        Switch $state
+            Case $CDPSTATE_ATTACHED
+                If $located <> Null Then Return $this
+
+            Case $CDPSTATE_DETACHED
+                If $located == Null Then Return $this
+
+            Case $CDPSTATE_VISIBLE
+                If $located <> Null And $this.isVisible() Then Return $this
+
+            Case $CDPSTATE_HIDDEN
+                If $located == Null Or Not $this.isVisible() Then Return $this
+        EndSwitch
+
+        Sleep(100)
+    Until TimerDiff($t) > $timeoutMs
+
+    Return SetError(1, 0, $this)
 EndFunc
 
 Func _CDP_Locator_WaitForElementState($oSelf)
 	; Todo
 EndFunc
 
-Func _CDP_Locator_WaitForSelector($oSelf)
+Func _CDP_Locator_Locator($oSelf)
 	; Todo
 EndFunc
 
@@ -1668,7 +1854,7 @@ Func teststep($text)
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
 	Local $teststep = _AutoItObject_Create()
-	;_AutoItObject_AddProperty($teststep, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddProperty($teststep, "text", $ELSCOPE_READONLY, $text)
 	_AutoItObject_AddMethod($teststep, "expect", "_CDP_Test_Step_Expect")
 	_AutoItObject_AddDestructor($teststep, "_CDP_Test_Step_End")
 	Return $teststep
@@ -2128,24 +2314,43 @@ Func WaitForFile($path, $timeoutMs = $cdp.config.timeout)
     Return True
 EndFunc
 
-Func __CDP_ResolveBrowserSpecifier($browser)
+Func __CDP_ResolveBrowserSpecifier($browser, $version)
 
-    ; Split "chrome@119" into ["chrome", "119"]
-    Local $arr = StringSplit($browser, "@", $STR_NOCOUNT)
-    If @error Or UBound($arr) < 2 Then
-        Return SetError(1, 0, $browser)
-    EndIf
+	Local $name
 
-    Local $browserType = $arr[0]
-    Local $browserVersion = $arr[1]
+	Switch $browser
+		Case $CDPBROWSER_CHROME
+			$name = "chrome"
+		Case $CDPBROWSER_EDGE
+			$name = "edge"
+		Case $CDPBROWSER_FIREFOX
+			$name = "firefox"
+		Case $CDPBROWSER_CHROMIUM
+			$name = "chrome"
+		Case $CDPBROWSER_CHROME_BETA
+			$name = "chrome"
+		Case $CDPBROWSER_CHROME_DEV
+			$name = "chrome"
+		Case $CDPBROWSER_CHROME_CANARY
+			$name = "chrome"
+		Case $CDPBROWSER_EDGE_BETA
+			$name = "edge"
+		Case $CDPBROWSER_EDGE_DEV
+			$name = "edge"
+		Case $CDPBROWSER_EDGE_CANARY
+			$name = "edge"
+		Case Else
+			; if user-defined browser
+			If FileExists($browser) Then $path = $browser
+	EndSwitch
 
     ; Build Selenium Manager command
-    Local $cmd = 'selenium-manager.exe --browser ' & $browserType & ' --browser-version ' & $browserVersion & ' --cache-path .'
+    Local $cmd = 'selenium-manager.exe --browser ' & $name & ' --browser-version ' & $version & ' --cache-path .'
 
     ; Run Selenium Manager and capture output
-	ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Locating ' & $browserType & ' version ' & $browserVersion & ' (this may take a moment if it needs to download)' & @CRLF)
+	ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Locating ' & $name & ' version ' & $version & ' (this may take a moment if it needs to download)' & @CRLF)
 
-    if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $browserType & ' version ' & $browserVersion & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
+    if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Locating ' & $name & ' version ' & $version & ' ...' & @CRLF & '(this may take a moment if it needs to download)')
 	Local $output = __CDP_RunCmdCapture($cmd)
     If @error Then Return SetError(2, 0, "")
 

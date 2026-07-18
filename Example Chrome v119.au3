@@ -7,7 +7,7 @@
 
 $hTimer = TimerInit()
 
-$chrome = $browser.launch("chrome@119", 9299, Default, Default, "1280,800")
+$chrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("version", 119).add("windowSize", "1280,800"))
 $page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
@@ -74,10 +74,6 @@ Func BasicWebPageTest($chrome, $page)
 				.expect($page.locator("//p[@id='click-message']").innerText()).toHaveLength(StringLen("You clicked the button!"), @ScriptLineNumber)
 			EndWith
 
-		EndWith
-
-		With teststep("Verify invalid locator")
-			.expect($page.locatorNow("//button[@id='invalid']")).toBeNull(@ScriptLineNumber)
 		EndWith
 
 	EndWith

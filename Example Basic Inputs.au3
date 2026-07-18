@@ -6,7 +6,7 @@
 
 ;$cdp.config.debug = True
 
-$chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
+$chrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("windowSize", "1280,800"))
 $page = $chrome.newPage()
 
 With test("Basic Inputs test")

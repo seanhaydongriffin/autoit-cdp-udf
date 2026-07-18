@@ -9,9 +9,9 @@ Local $chrome1, $chrome2
 With test("Multiple Chrome Tabs test")
 
 	With teststep("Chrome browser opens a second tab")
-		$chrome = $browser.launch(Default, 9299, Default, @ScriptDir & "\chrome1profile", "1280,800")
+		$chrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("profile", @ScriptDir & "\chrome1profile").add("windowSize", "1280,800"))
 		$chromepage1 = $chrome.newPage()
-		$chromepage1.goto("https://testpages.eviltester.com/pages/navigation/windows-names/", False)
+		$chromepage1.goto("https://testpages.eviltester.com/pages/navigation/windows-names/", True)
 		$chromepage1.locator("//a[@id='gobasicajax']").click()
 		$chromepage2 = $chrome.getNewPage()
 		$windowNameButton = $chromepage2.waitForLoad().locator("//button[@id='window-name-button']")
@@ -22,14 +22,14 @@ With test("Multiple Chrome Tabs test")
 	EndWith
 
 	With teststep("Launch first Chrome browser and first tab")
-		$chrome1 = $browser.launch(Default, 9299, Default, @ScriptDir & "\chrome1profile", "1280,800")
+		$chrome1 = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("profile", @ScriptDir & "\chrome1profile").add("windowSize", "1280,800"))
 		$chrome1page1 = $chrome1.newPage()
 		$chrome1page1.goto("https://testpages.eviltester.com/pages/basics/element-attribute-examples/")
 		MsgBox(0, "Example Multiple Chrome Tabs", "Chrome #1 launched and new page (tab) #1", 2)
 	EndWith
 
 	With teststep("Launch second Chrome browser and first tab")
-		$chrome2 = $browser.launch(Default, 9298, Default, @ScriptDir & "\chrome2profile", "1280,800")
+		$chrome2 = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9298).add("profile", @ScriptDir & "\chrome2profile").add("windowSize", "1280,800"))
 		$chrome2page1 = $chrome2.newPage()
 		$chrome2page1.goto("https://testpages.eviltester.com/pages/basics/element-attribute-examples/")
 		MsgBox(0, "Example Multiple Chrome Tabs", "Chrome #2 launched and new page (tab) #1", 2)

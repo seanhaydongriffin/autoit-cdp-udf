@@ -5,7 +5,7 @@
 
 #include "CDP.au3"
 
-$chrome = $browser.launch(Default, 9299, Default, Default, "1280,800")
+$chrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("windowSize", "1280,800"))
 $page = $chrome.newPage()
 BasicWebPageTest($chrome, $page)
 $chrome.close()
@@ -17,7 +17,7 @@ Func BasicWebPageTest($chrome, $page)
 		With teststep("Verify Basic Web Page navigation")
 
 			teststep("Navigate to evil tester test pages")
-			$page.goto("https://testpages.eviltester.com", False)
+			$page.goto("https://testpages.eviltester.com", True)
 
 			With teststep("Verify the main page")
 				$title = $page.locator("//head/title")

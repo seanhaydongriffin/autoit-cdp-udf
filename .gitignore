@@ -6,6 +6,7 @@ chrome*/
 *.gif
 *.bmp
 *.webp
+*.json
 
 # AutoIt logs
 *.log

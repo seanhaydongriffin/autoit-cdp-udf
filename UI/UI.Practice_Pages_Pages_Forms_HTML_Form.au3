@@ -12,7 +12,7 @@ _AutoItObject_AddMethod($UI_Practice_Pages_Pages_Forms_HTML_Form, "get_username"
 _AutoItObject_AddMethod($UI_Practice_Pages_Pages_Forms_HTML_Form, "get_password",   "UI_Practice_Pages_Pages_Forms_HTML_Form_get_password")
 
 Func UI_Practice_Pages_Pages_Forms_HTML_Form_from_Windows($oSelf)
-	$qaChrome = $browser.launch(Default, 9102, Default, @ScriptDir & "\chrometestingprofile", Default, True)
+	$qaChrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9102).add("profile", @ScriptDir & "\chrometestingprofile").add("clearCookies", True))
 	$qaPage1 = $qaChrome.newPage()
 	$qaPage1.goto(testdata("Environment", "URL") & "pages/forms/html-form/")
 EndFunc
