@@ -536,7 +536,6 @@ Func _CDP_Browser_Exists($oSelf, $port)
 	Return $g_CDP_Browsers.Exists($port)
 EndFunc
 
-;Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $port = Default, $startupSwitches = Default, $profile = Default, $windowSize = Default, $clearCookies = False)
 Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null)
 
 	if $cdp.config.infoPopups = True Then SplashTextOn("AutoIt CDP", "Preparing browser ...", 420, 120)
