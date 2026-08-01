@@ -461,6 +461,7 @@ EndFunc
 
 Func _CDP_Api_Post($oSelf, $sUrl, $vPostData, $oHeaderData = Null, $jOptions = Null)
 
+	if $vPostData = Null Then $vPostData = ""
 	if IsString($vPostData) = False Then $vPostData = $vPostData.handle
 	Local $oHeaderList = Null, $sContentType = Null
 	if $oHeaderData <> Null Then
@@ -1417,7 +1418,10 @@ EndFunc
 Func _CDP_Locator_Clear($oSelf)
 
 	if $oSelf._locate() = Null Then Return Null
-	; Todo
+	$oSelf.focus()
+    ; Clear
+    _CDP_SendCommand($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", 'function() { this.value = ""; this.dispatchEvent(new Event("input", { bubbles: true })); this.dispatchEvent(new Event("change", { bubbles: true })); }'))
+    Return $oSelf
 
 EndFunc
 
@@ -1733,7 +1737,7 @@ Func _CDP_Locator_WaitFor($this, $state = $CDPSTATE_VISIBLE, $timeoutMs = $cdp.c
         Sleep(100)
     Until TimerDiff($t) > $timeoutMs
 
-    Return SetError(1, 0, $this)
+    Return Null
 EndFunc
 
 Func _CDP_Locator_WaitForElementState($oSelf)
@@ -1842,6 +1846,14 @@ Func testdata($poolName, $recordKey, $testKey = "") ; $fieldName = Default, $key
 
 EndFunc
 
+Func testdataUpdate($poolName, $data)
+
+	_SQLite_XSV_Open(StringReplace(@ScriptDir, "\Scenarios", "") & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+	_SQLite_XSV_UpdateRecordAndSave($data, StringReplace(@ScriptDir, "\Scenarios", "") & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+	_SQLite_XSV_Close()
+
+EndFunc
+
 Func _CDP_Test_Data_Get($oSelf, $sFieldName)
 ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $sFieldName = ' & $sFieldName & @CRLF & '>Error code: ' & @error & @CRLF)
 EndFunc
@@ -1854,6 +1866,8 @@ Func teststep($text)
 
 	Local $teststep = _AutoItObject_Create()
 	_AutoItObject_AddProperty($teststep, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddMethod($teststep, "info", "_CDP_Info")
+	_AutoItObject_AddMethod($teststep, "debug", "_CDP_Debug")
 	_AutoItObject_AddMethod($teststep, "expect", "_CDP_Test_Step_Expect")
 	_AutoItObject_AddDestructor($teststep, "_CDP_Test_Step_End")
 	Return $teststep
@@ -1874,6 +1888,14 @@ Func _CDP_Test_End($oSelf)
 	EndIf
 
 	$cdp.state.indentLevel = $cdp.state.indentLevel - 1
+EndFunc
+
+Func _CDP_Info($oSelf, $message)
+	__CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & "ℹ️ " & $message & @CRLF)
+EndFunc
+
+Func _CDP_Debug($oSelf, $message)
+	__CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & "🔧 " & $message & @CRLF)
 EndFunc
 
 Func _CDP_Test_Step_Expect($oSelf, $subject, $text = "")
@@ -1922,8 +1944,8 @@ EndFunc
 
 
 Func _CDP_Test_Step_Expect_Msg($indent, $pass, $text, $lineNumber = "")
-	$result = "▶ ✓"
-	if $pass = False Then $result = "▶ ✗"
+	$result = "✓"
+	if $pass = False Then $result = "✗"
 	if $lineNumber <> "" Then $lineNumber = " (line " & $lineNumber & ")"
 
    	__CDP_ConsoleWrite($indent & $result & " Expect " & StringStripWS($text, 1) & $lineNumber & @CRLF)
