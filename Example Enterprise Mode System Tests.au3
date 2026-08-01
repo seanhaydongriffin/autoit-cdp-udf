@@ -15,9 +15,9 @@ With test("System Test - Login")
 	$user = testdata("User", "User 1")
 
 	With teststep("Login to Practice Pages")
-		With $html_form
-			.from_Windows(testlog())
-			.submit($user.Item("Username"), $user.Item("Password"), testlog())
+		$html_form.from_Windows(testlog())
+		With teststep("Submit user credentials")
+			$html_form.submit($user.Item("Username"), $user.Item("Password"), testlog())
 		EndWith
 	EndWith
 

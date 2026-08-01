@@ -26,6 +26,7 @@ FileInstall(".\sqlite3.exe", ".\")
 #include "JsonCEx.au3" ; this includes "AutoItObject.au3"
 #include "CurlEx.au3"
 #include "SQLite-XSV.au3"
+#include "CDPReport.au3"
 
 Global Const $WINHTTP_WEB_SOCKET_RECEIVE_FLAG_PEEK = 1
 Global $CDP_DISABLE_ALIASES
@@ -886,6 +887,9 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddProperty($oPage, "wsHandle", $ELSCOPE_PUBLIC, $wsHandle)
     _AutoItObject_AddProperty($oPage, "sessionId", $ELSCOPE_PUBLIC, $sessionId)
     _AutoItObject_AddProperty($oPage, "targetId", $ELSCOPE_PUBLIC, $targetId)
+
+    ; Track the most-recently-created page as the source for end-of-step report screenshots
+    $g_CDP_ReportActivePage = $oPage
 
     ; Enable core domains
     _CDP_SendCommand($oPage, "DOM.enable")
@@ -1811,6 +1815,9 @@ Func test($text)
 	if Not FileExists($testResultsPath) Then DirCreate($testResultsPath)
 	FileDelete($testResultsPath & "\*.*")
 
+	; Begin the HTML test report for this test
+	__CDP_Report_Begin($testResultsPath, $text)
+
     if $cdp.config.video = $CDPVIDEO_ON Then
 		$g_CDP_FfmpegHandle = DllOpen("FFMpegRecorder.dll")
 		DllCall($g_CDP_FfmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $testResultsPath & "\video.webm")
@@ -1864,8 +1871,13 @@ Func teststep($text)
 
 	$cdp.state.indentLevel = $cdp.state.indentLevel + 1
 
+	; Register this step in the HTML report; carry its id/parent on the object for step-end
+	Local $aReport = __CDP_Report_StepBegin($text)
+
 	Local $teststep = _AutoItObject_Create()
 	_AutoItObject_AddProperty($teststep, "text", $ELSCOPE_READONLY, $text)
+	_AutoItObject_AddProperty($teststep, "reportId", $ELSCOPE_READONLY, $aReport[0])
+	_AutoItObject_AddProperty($teststep, "reportParent", $ELSCOPE_READONLY, $aReport[1])
 	_AutoItObject_AddMethod($teststep, "info", "_CDP_Info")
 	_AutoItObject_AddMethod($teststep, "debug", "_CDP_Debug")
 	_AutoItObject_AddMethod($teststep, "expect", "_CDP_Test_Step_Expect")
@@ -1875,6 +1887,8 @@ Func teststep($text)
 EndFunc
 
 Func _CDP_Test_Step_End($oSelf)
+	; Capture the end-of-step screenshot and append the report record before unwinding
+	__CDP_Report_StepEnd($oSelf.reportId, $oSelf.reportParent, $oSelf.text)
 	$cdp.state.indentLevel = $cdp.state.indentLevel - 1
 EndFunc
 
@@ -1886,6 +1900,9 @@ Func _CDP_Test_End($oSelf)
 		$videoPath = @ScriptDir & "\test-results\" & $oSelf.text & "\video.webm"
 		if FileExists($videoPath) Then __CDP_ConsoleWrite("🎥 Video: " & $videoPath & @CRLF)
 	EndIf
+
+	; Finalise the HTML test report
+	__CDP_Report_End()
 
 	$cdp.state.indentLevel = $cdp.state.indentLevel - 1
 EndFunc
