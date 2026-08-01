@@ -42,7 +42,8 @@ Global Enum _
     $CDPBROWSER_CHROME_CANARY, _
     $CDPBROWSER_EDGE_BETA, _
     $CDPBROWSER_EDGE_DEV, _
-    $CDPBROWSER_EDGE_CANARY
+    $CDPBROWSER_EDGE_CANARY, _
+	$CDPBROWSER_WEBVIEW2
 
 Global Enum _
 		$CDPVIDEO_ON, _
@@ -565,6 +566,14 @@ Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null
 			$path = @ProgramFilesDir & "\Microsoft\Edge Dev\Application\msedge.exe"
 		Case $CDPBROWSER_EDGE_CANARY
 			$path = @ProgramFilesDir & "\Microsoft\Edge SxS\Application\msedge.exe"
+		Case $CDPBROWSER_WEBVIEW2
+			; WebView2 is not a standalone browser.
+			; We only set the debugging environment variable.
+			EnvSet("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--remote-debugging-port=" & $port)
+
+			; No executable path
+			$path = ""
+
 		Case Else
 			; if user-defined browser
 			If FileExists($browser) Then $path = $browser
@@ -623,14 +632,15 @@ Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null
 		FileWrite($profile & "\Default\Preferences", _JsonC_ObjectToJsonString($jPrefs))
 	EndIf
 
-	if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
-	Local $cmd = '"' & $path & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
-	if $cdp.config.debug = True Then __CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Running ' & $cmd & @CRLF)
-    Run($cmd)
+	if StringLen($path) > 0 Then
+		if $cdp.config.infoPopups = True Then ControlSetText("AutoIt CDP", "", "Static1", 'Launching browser ... ')
+		Local $cmd = '"' & $path & '" --remote-debugging-port=' & $port & ' --user-data-dir="' & $profile & '" ' & $startupSwitches ; & ' chrome://newtab'
+		if $cdp.config.debug = True Then __CDP_ConsoleWrite(_StringRepeat("  ", $cdp.state.indentLevel) & '▶ 🔧 Running ' & $cmd & @CRLF)
+		Run($cmd)
+		if $cdp.config.infoPopups = True Then SplashOff()
+	EndIf
 
-	if $cdp.config.infoPopups = True Then SplashOff()
-
-    Sleep(500) ; give Chrome time to start
+	Sleep(500) ; give Chrome time to start
 
 	if $g_CDP_Browsers.Count = 0 Then
 		AdlibRegister("_CDP_RecvLoop", 5)
@@ -656,6 +666,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null
     _AutoItObject_AddMethod($oBrowser, "newPage", "_CDP_Browser_NewPage")
     ;_AutoItObject_AddMethod($oBrowser, "headlessShell", "_CDP_Browser_NewHeadlessShell")
     _AutoItObject_AddMethod($oBrowser, "getNewPage", "_CDP_Browser_GetNewPage")
+    _AutoItObject_AddMethod($oBrowser, "getExistingPage", "_CDP_Browser_GetExistingPage")
 	_AutoItObject_AddMethod($oBrowser, "close", "_CDP_Browser_Close")
 
     ; Add properties
@@ -730,6 +741,23 @@ Func _CDP_Browser_NewPage($oSelf)
 	; create a target
     Local $resp = _CDP_SendSync($oSelf, "Target.createTarget", _JsonC_Object().add("url", "about:blank"))
 	Local $targetIdVal = _JsonC_Object($resp).get("result").get("targetId").value()
+
+	; attach to the target
+    Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", _JsonC_Object().add("targetId", $targetIdVal).add("flatten", True))
+	Local $sessionIdVal = _JsonC_Object($resp).get("result").get("sessionId").value()
+
+	; inform the parent browser object that this is the active target
+	$oSelf.activeTargetId = $targetIdVal
+
+    ; Create Page object
+	return __CDP_Page_Object($oSelf, $oSelf.wsPort, $oSelf.wsHandle, $sessionIdVal, $targetIdVal)
+
+EndFunc
+
+Func _CDP_Browser_GetExistingPage($oSelf)
+
+	; get the default tab target
+	Local $targetIdVal = _CDP_Browser_GetDefaultTabTargetId($oSelf)
 
 	; attach to the target
     Local $resp = _CDP_SendSync($oSelf, "Target.attachToTarget", _JsonC_Object().add("targetId", $targetIdVal).add("flatten", True))
@@ -1825,6 +1853,8 @@ Func test($text)
 	EndIf
 
 	Local $test = _AutoItObject_Create()
+	_AutoItObject_AddMethod($test, "info", "_CDP_Info")
+	_AutoItObject_AddMethod($test, "debug", "_CDP_Debug")
 	_AutoItObject_AddProperty($test, "text", $ELSCOPE_READONLY, $text)
 	_AutoItObject_AddProperty($test, "timer", $ELSCOPE_READONLY, TimerInit())
 	_AutoItObject_AddProperty($test, "environment", $ELSCOPE_READONLY, $g_CDP_TestEnv)
