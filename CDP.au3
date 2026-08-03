@@ -1916,6 +1916,13 @@ Func teststep($text)
 
 EndFunc
 
+; Capture a screenshot NOW as the current test step's report image, instead of the automatic
+; end-of-step capture. Callable from anywhere inside a teststep block, including enclosed functions
+; (it targets the innermost open step, not a With-scoped object). Last successful call wins.
+Func testsnap()
+	__CDP_Report_Snap()
+EndFunc
+
 Func _CDP_Test_Step_End($oSelf)
 	; Capture the end-of-step screenshot and append the report record before unwinding
 	__CDP_Report_StepEnd($oSelf.reportId, $oSelf.reportParent, $oSelf.text)

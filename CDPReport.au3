@@ -13,6 +13,7 @@
 Global $g_CDP_ReportFile = -1                  ; open file handle, or -1 when no report is active
 Global $g_CDP_ReportStepId = 0                 ; monotonic step id
 Global $g_CDP_ReportStack[256]                 ; stack of currently-open step ids (for parent resolution)
+Global $g_CDP_ReportSnap[256]                  ; per-open-step pending screenshot (base64), set by testsnap()
 Global $g_CDP_ReportStackTop = -1
 Global $g_CDP_ReportActivePage = Null          ; most-recently-created page object; source for step-end screenshots
 Global $g_CDP_ReportDir = ""                   ; the test-results\<test name> folder
@@ -58,7 +59,10 @@ EndFunc
 Func __CDP_Report_StepEnd($iId, $iParent, $sName)
     If $g_CDP_ReportFile = -1 Then Return
 
-    Local $sB64 = __CDP_Report_CaptureBase64()
+    ; Prefer an explicit testsnap() taken during the step; otherwise capture the end-of-step state now.
+    Local $sB64 = ""
+    If $g_CDP_ReportStackTop >= 0 Then $sB64 = $g_CDP_ReportSnap[$g_CDP_ReportStackTop]
+    If $sB64 = "" Then $sB64 = __CDP_Report_CaptureBase64()
 
     Local $sImgPayload = ""
     If $sB64 <> "" Then
@@ -82,7 +86,18 @@ Func __CDP_Report_StepEnd($iId, $iParent, $sName)
         '<b>' & __CDP_Report_HtmlEscape($sName) & '</b><i>' & $sImgPayload & '</i></div>' & @CRLF)
     FileFlush($g_CDP_ReportFile)
 
-    If $g_CDP_ReportStackTop >= 0 Then $g_CDP_ReportStackTop -= 1
+    If $g_CDP_ReportStackTop >= 0 Then
+        $g_CDP_ReportSnap[$g_CDP_ReportStackTop] = ""   ; clear the slot as the step unwinds
+        $g_CDP_ReportStackTop -= 1
+    EndIf
+EndFunc
+
+; Capture the active page now and mark it as the current step's report image (last successful call wins).
+; Called by the public testsnap() function; works from any call depth inside a teststep block.
+Func __CDP_Report_Snap()
+    If $g_CDP_ReportFile = -1 Or $g_CDP_ReportStackTop < 0 Then Return
+    Local $sB64 = __CDP_Report_CaptureBase64()
+    If $sB64 <> "" Then $g_CDP_ReportSnap[$g_CDP_ReportStackTop] = $sB64
 EndFunc
 
 ; End the report (writes the closing tags and closes the handle). Safe to never be called (browser tolerates it).
@@ -123,7 +138,7 @@ Func __CDP_Report_HtmlHead($sTitle)
         '#nav{flex:none;width:320px;min-width:120px;overflow:auto;padding:6px;outline:none}' & _
         '#split{flex:none;width:6px;cursor:col-resize;background:#ddd}' & _
         '#split:hover{background:#bbb}' & _
-        '#detail{flex:1;min-width:0;overflow:auto;background:#1e1e1e;display:flex;align-items:flex-start;justify-content:center;padding:10px}' & _
+        '#detail{flex:1;min-width:0;overflow:auto;background:#fff;display:flex;align-items:flex-start;justify-content:center;padding:10px}' & _
         '#shot{max-width:100%;height:auto;box-shadow:0 0 8px rgba(0,0,0,.5)}' & _
         '.node{margin:1px 0}' & _
         '.row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;cursor:pointer;white-space:nowrap}' & _
