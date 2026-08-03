@@ -8,6 +8,7 @@ $cdp.config.video = $CDPVIDEO_ON
 ;$cdp.config.debug = True
 
 $chrome = $browser.launch($CDPBROWSER_CHROME, _JsonC_Object().add("port", 9299).add("windowSize", "1280,800"))
+;$chrome = $browser.launch($CDPBROWSER_EDGE, _JsonC_Object().add("port", 9299).add("windowSize", "1280,800"))
 $page = $chrome.newPage()
 
 With test("Basic Inputs test")
