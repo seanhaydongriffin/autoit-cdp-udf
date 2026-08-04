@@ -1192,7 +1192,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "blur", "_CDP_Locator_Blur")											; done
 	_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo - Reqs CDP Commands Runtime.callFunctionOn
 	_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
-	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; todo - Reqs CDP Commands DOM.setFileInputFiles
+	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; done
 	_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo - Reqs CDP Commands DOM.dispatchEvent
 	_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done
 	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
@@ -1477,10 +1477,25 @@ Func _CDP_Locator_DragTo($oSelf)
 
 EndFunc
 
-Func _CDP_Locator_SetInputFiles($oSelf)
+; Set the file(s) on an <input type="file"> directly via CDP — no native OS file dialog.
+; $vFiles accepts a single absolute path (string) or an array of absolute paths (for multiple).
+; DOM.setFileInputFiles injects the files and fires the input/change events itself.
+Func _CDP_Locator_SetInputFiles($oSelf, $vFiles)
 
 	if $oSelf._locate() = Null Then Return Null
-	; Todo
+
+	; Build the files array from a single path or an array of paths.
+	Local $aFiles = _JsonC_Array()
+	If IsArray($vFiles) Then
+		For $sFile In $vFiles
+			$aFiles.add($sFile)
+		Next
+	Else
+		$aFiles.add($vFiles)
+	EndIf
+
+	_CDP_SendSync($oSelf, "DOM.setFileInputFiles", _JsonC_Object().add("files", $aFiles).add("objectId", $oSelf.objectId))
+	return $oSelf
 
 EndFunc
 
