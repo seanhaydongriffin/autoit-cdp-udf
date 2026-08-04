@@ -13,7 +13,7 @@
 Global $g_CDP_ReportFile = -1                  ; open file handle, or -1 when no report is active
 Global $g_CDP_ReportStepId = 0                 ; monotonic step id
 Global $g_CDP_ReportStack[256]                 ; stack of currently-open step ids (for parent resolution)
-Global $g_CDP_ReportSnap[256]                  ; per-open-step pending screenshot (base64), set by testsnap()
+Global $g_CDP_ReportSnap[256]                  ; per-open-step pending screenshot (base64), set by teststepshot()
 Global $g_CDP_ReportStackTop = -1
 Global $g_CDP_ReportActivePage = Null          ; most-recently-created page object; source for step-end screenshots
 Global $g_CDP_ReportDir = ""                   ; the test-results\<test name> folder
@@ -55,14 +55,14 @@ Func __CDP_Report_StepBegin($sName)
     Return $aRet
 EndFunc
 
-; Called when a test step ends. Captures the end-of-step screenshot of the active page and appends one flat record.
+; Called when a test step ends. Appends one flat record, including any image attached via teststepshot().
 Func __CDP_Report_StepEnd($iId, $iParent, $sName)
     If $g_CDP_ReportFile = -1 Then Return
 
-    ; Prefer an explicit testsnap() taken during the step; otherwise capture the end-of-step state now.
+    ; Use only an image explicitly attached via teststepshot() during the step. No automatic
+    ; screenshot: steps the author didn't annotate simply have no image in the report.
     Local $sB64 = ""
     If $g_CDP_ReportStackTop >= 0 Then $sB64 = $g_CDP_ReportSnap[$g_CDP_ReportStackTop]
-    If $sB64 = "" Then $sB64 = __CDP_Report_CaptureBase64()
 
     Local $sImgPayload = ""
     If $sB64 <> "" Then
@@ -92,11 +92,12 @@ Func __CDP_Report_StepEnd($iId, $iParent, $sName)
     EndIf
 EndFunc
 
-; Capture the active page now and mark it as the current step's report image (last successful call wins).
-; Called by the public testsnap() function; works from any call depth inside a teststep block.
-Func __CDP_Report_Snap()
+; Attach an image to the current step (last successful call wins). If $sB64 is supplied it is used
+; as-is (an element screenshot or a pre-captured base64 PNG); otherwise the active page is captured now.
+; Called by the public teststepshot() function; works from any call depth inside a teststep block.
+Func __CDP_Report_Snap($sB64 = Default)
     If $g_CDP_ReportFile = -1 Or $g_CDP_ReportStackTop < 0 Then Return
-    Local $sB64 = __CDP_Report_CaptureBase64()
+    If $sB64 = Default Then $sB64 = __CDP_Report_CaptureBase64()
     If $sB64 <> "" Then $g_CDP_ReportSnap[$g_CDP_ReportStackTop] = $sB64
 EndFunc
 

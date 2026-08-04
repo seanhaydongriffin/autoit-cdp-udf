@@ -897,6 +897,8 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _AutoItObject_AddMethod($oPage, "setContent",	"_CDP_Page_SetContent")
     _AutoItObject_AddMethod($oPage, "waitForLoad", 	"_CDP_WaitForLoad")
     _AutoItObject_AddMethod($oPage, "screenshot",  	"_CDP_Page_Screenshot")
+    _AutoItObject_AddMethod($oPage, "clearCache",  	"_CDP_Page_ClearBrowserCache")
+    _AutoItObject_AddMethod($oPage, "clearCookies",	"_CDP_Page_ClearBrowserCookies")
 
 	; Add getter methods
 	_AutoItObject_AddMethod($oPage, "url",      	"_CDP_Page_Url")
@@ -923,7 +925,7 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
     _CDP_SendCommand($oPage, "DOM.enable")
     _CDP_SendCommand($oPage, "Page.enable")
     _CDP_SendCommand($oPage, "Runtime.enable")
-    ;_CDP_SendSync($oPage, "Network.enable")
+    _CDP_SendCommand($oPage, "Network.enable")
 
 	if $cdp.config.video = $CDPVIDEO_ON Then _CDP_SendCommand($oPage, "Page.startScreencast", _JsonC_Object().add("format", "jpeg").add("quality", 80).add("maxWidth", 1280).add("maxHeight", 720))
 
@@ -1032,6 +1034,17 @@ Func _CDP_Page_Screenshot($oSelf, $sPath, $bFullPage = True)
 	FileWrite($hFile, $bPng)
 	FileClose($hFile)
 EndFunc
+
+Func _CDP_Page_ClearBrowserCache($oSelf)
+    _CDP_SendCommand($oSelf, "Network.clearBrowserCache")
+	Return $oSelf
+EndFunc
+
+Func _CDP_Page_ClearBrowserCookies($oSelf)
+    _CDP_SendCommand($oSelf, "Network.clearBrowserCookies")
+	Return $oSelf
+EndFunc
+
 
 Func __CDP_Perform_Search($selector)
 
@@ -1754,16 +1767,16 @@ Func _CDP_Locator_WaitFor($this, $state = $CDPSTATE_VISIBLE, $timeoutMs = $cdp.c
 
         Switch $state
             Case $CDPSTATE_ATTACHED
-                If $located <> Null Then Return $this
+                If $located <> Null Then Return $located
 
             Case $CDPSTATE_DETACHED
-                If $located == Null Then Return $this
+                If $located == Null Then Return Null
 
             Case $CDPSTATE_VISIBLE
-                If $located <> Null And $this.isVisible() Then Return $this
+                If $located <> Null And $located.isVisible() Then Return $located
 
             Case $CDPSTATE_HIDDEN
-                If $located == Null Or Not $this.isVisible() Then Return $this
+                If $located == Null Or Not $located.isVisible() Then Return $located
         EndSwitch
 
         Sleep(100)
@@ -1863,7 +1876,7 @@ Func test($text)
 
 EndFunc
 
-Func testdata($poolName, $recordKey, $testKey = "") ; $fieldName = Default, $keyColumnName = Default)
+Func testdata($poolName, $recordKey, $testKey = "")
 
 	Local $data
 
@@ -1885,8 +1898,8 @@ EndFunc
 
 Func testdataUpdate($poolName, $data)
 
-	_SQLite_XSV_Open(StringReplace(@ScriptDir, "\Scenarios", "") & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
-	_SQLite_XSV_UpdateRecordAndSave($data, StringReplace(@ScriptDir, "\Scenarios", "") & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+	_SQLite_XSV_Open(@ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
+	_SQLite_XSV_UpdateRecordAndSave($data, @ScriptDir & "\Data\Pools\" & $g_CDP_TestEnv & " - " & $poolName & ".csv")
 	_SQLite_XSV_Close()
 
 EndFunc
@@ -1919,8 +1932,18 @@ EndFunc
 ; Capture a screenshot NOW as the current test step's report image, instead of the automatic
 ; end-of-step capture. Callable from anywhere inside a teststep block, including enclosed functions
 ; (it targets the innermost open step, not a With-scoped object). Last successful call wins.
-Func testsnap()
-	__CDP_Report_Snap()
+; Attach an image to the current teststep in the report.
+;   teststepshot()          -> full-page screenshot of the active page
+;   teststepshot($locator)  -> screenshot of just that located element
+;   teststepshot($base64)   -> use an image you already captured (base64 PNG)
+Func teststepshot($target = Null)
+	If IsObj($target) Then
+		__CDP_Report_Snap($target.screenshot())            ; a located element
+	ElseIf IsString($target) And StringLen($target) > 0 Then
+		__CDP_Report_Snap($target)                         ; a pre-captured base64 PNG
+	Else
+		__CDP_Report_Snap()                                ; full-page screenshot
+	EndIf
 EndFunc
 
 Func _CDP_Test_Step_End($oSelf)
