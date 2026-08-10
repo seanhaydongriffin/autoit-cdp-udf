@@ -4,7 +4,8 @@
 ; Title .........: CDPReport
 ; Description ...: Standalone, self-contained HTML test report for the CDP UDF.
 ;                 One file per test in test-results\<test name>\report.html. Left panel = nested accordion of test step
-;                 names (built by JS from flat records); right panel = the selected step's end-of-step screenshot.
+;                 names (built by JS from flat records); right panel = the selected step's ordered detail
+;                 (text lines + images, appended in call order via teststepinfo()..teststepfail() / teststepimage()).
 ;                 Written realtime in append mode; tolerant of an abruptly-terminated (unclosed) HTML file.
 ; Author(s) .....: Sean Griffin
 ; ===============================================================================================================================
@@ -13,7 +14,8 @@
 Global $g_CDP_ReportFile = -1                  ; open file handle, or -1 when no report is active
 Global $g_CDP_ReportStepId = 0                 ; monotonic step id
 Global $g_CDP_ReportStack[256]                 ; stack of currently-open step ids (for parent resolution)
-Global $g_CDP_ReportSnap[256]                  ; per-open-step pending screenshot (base64), set by teststepshot()
+Global $g_CDP_ReportDetail[256]                ; per-open-step ordered detail HTML (text + image items, in call order)
+Global $g_CDP_ReportImgSeq = 0                 ; monotonic image counter (external-image filenames)
 Global $g_CDP_ReportStackTop = -1
 Global $g_CDP_ReportActivePage = Null          ; most-recently-created page object; source for step-end screenshots
 Global $g_CDP_ReportDir = ""                   ; the test-results\<test name> folder
@@ -27,7 +29,7 @@ Func __CDP_Report_Begin($sDir, $sName)
     $g_CDP_ReportStepId = 0
     $g_CDP_ReportStackTop = -1
 
-    Local $sPath = $sDir & "\report.html"
+    Local $sPath = $sDir & "\" & $sName & " test run.html"
     ; mode 2 = erase+write, 128 = UTF8 no BOM. Handle kept open; later FileWrite calls append.
     $g_CDP_ReportFile = FileOpen($sPath, 2 + 128)
     If $g_CDP_ReportFile = -1 Then Return SetError(1, 0, False)
@@ -55,50 +57,96 @@ Func __CDP_Report_StepBegin($sName)
     Return $aRet
 EndFunc
 
-; Called when a test step ends. Appends one flat record, including any image attached via teststepshot().
+; Called when a test step ends. Appends one flat record carrying the step's ordered detail
+; (the text + image items appended during the step via teststepinfo()..teststepfail() / teststepimage()).
 Func __CDP_Report_StepEnd($iId, $iParent, $sName)
     If $g_CDP_ReportFile = -1 Then Return
 
-    ; Use only an image explicitly attached via teststepshot() during the step. No automatic
-    ; screenshot: steps the author didn't annotate simply have no image in the report.
-    Local $sB64 = ""
-    If $g_CDP_ReportStackTop >= 0 Then $sB64 = $g_CDP_ReportSnap[$g_CDP_ReportStackTop]
+    Local $sDetail = ""
+    If $g_CDP_ReportStackTop >= 0 Then $sDetail = $g_CDP_ReportDetail[$g_CDP_ReportStackTop]
 
-    Local $sImgPayload = ""
-    If $sB64 <> "" Then
-        If $g_CDP_ReportEmbedImages Then
-            $sImgPayload = $sB64                                  ; base64 goes inline in <i>
-        Else
-            Local $sRel = "steps\" & $iId & ".png"
-            Local $hPng = FileOpen($g_CDP_ReportDir & "\" & $sRel, 18) ; 18 = binary+erase
-            If $hPng <> -1 Then
-                FileWrite($hPng, __CDP_Base64Decode($sB64))
-                FileClose($hPng)
-                $sImgPayload = StringReplace($sRel, "\", "/")     ; <i> holds a relative path instead
-            EndIf
-        EndIf
-    EndIf
-
-    ; One self-contained record. data-embed tells the JS whether <i> is base64 or a src path.
+    ; One self-contained record. <div class="d"> holds the ordered detail items, shown in the
+    ; detail panel when the step is selected.
     FileWrite($g_CDP_ReportFile, _
-        '<div class="step" data-id="' & $iId & '" data-parent="' & $iParent & _
-        '" data-embed="' & ($g_CDP_ReportEmbedImages ? "1" : "0") & '">' & _
-        '<b>' & __CDP_Report_HtmlEscape($sName) & '</b><i>' & $sImgPayload & '</i></div>' & @CRLF)
+        '<div class="step" data-id="' & $iId & '" data-parent="' & $iParent & '">' & _
+        '<b>' & __CDP_Report_HtmlEscape($sName) & '</b>' & _
+        '<div class="d">' & $sDetail & '</div></div>' & @CRLF)
     FileFlush($g_CDP_ReportFile)
 
     If $g_CDP_ReportStackTop >= 0 Then
-        $g_CDP_ReportSnap[$g_CDP_ReportStackTop] = ""   ; clear the slot as the step unwinds
+        $g_CDP_ReportDetail[$g_CDP_ReportStackTop] = ""   ; clear the buffer as the step unwinds
         $g_CDP_ReportStackTop -= 1
     EndIf
 EndFunc
 
-; Attach an image to the current step (last successful call wins). If $sB64 is supplied it is used
-; as-is (an element screenshot or a pre-captured base64 PNG); otherwise the active page is captured now.
-; Called by the public teststepshot() function; works from any call depth inside a teststep block.
-Func __CDP_Report_Snap($sB64 = Default)
+; Append an IMAGE item to the current step's ordered detail. $vB64 = Default captures the active
+; page now (full-page PNG); otherwise it's a pre-captured base64 image (element screenshot or any
+; format). The format is auto-detected so the data URI / file extension is correct. Multiple calls
+; append in order. Called by the public teststepimage(); works from any depth inside a teststep block.
+Func __CDP_Report_Image($vB64 = Default)
     If $g_CDP_ReportFile = -1 Or $g_CDP_ReportStackTop < 0 Then Return
-    If $sB64 = Default Then $sB64 = __CDP_Report_CaptureBase64()
-    If $sB64 <> "" Then $g_CDP_ReportSnap[$g_CDP_ReportStackTop] = $sB64
+    If $vB64 = Default Then $vB64 = __CDP_Report_CaptureBase64()
+    If $vB64 = "" Then Return
+
+    Local $sMime = __CDP_Report_ImageMime($vB64)
+    Local $sSrc
+    If $g_CDP_ReportEmbedImages Then
+        $sSrc = "data:" & $sMime & ";base64," & $vB64          ; inline (single portable file)
+    Else
+        $g_CDP_ReportImgSeq += 1
+        Local $sRel = "steps\img_" & $g_CDP_ReportImgSeq & "." & __CDP_Report_ImageExt($sMime)
+        Local $hImg = FileOpen($g_CDP_ReportDir & "\" & $sRel, 18) ; 18 = binary+erase
+        If $hImg = -1 Then Return
+        FileWrite($hImg, __CDP_Base64Decode($vB64))
+        FileClose($hImg)
+        $sSrc = StringReplace($sRel, "\", "/")                 ; external file reference
+    EndIf
+
+    ; data-src (not src) so images in the hidden #data block don't all load at once; the JS
+    ; hydrates only the selected step's images on select.
+    $g_CDP_ReportDetail[$g_CDP_ReportStackTop] &= '<img class="shot" data-src="' & $sSrc & '">'
+EndFunc
+
+; Append a TEXT item to the current step's ordered detail. $sLevel = info|warn|error|pass|fail
+; (default info) drives the colour. Multiple calls append in order. Called by the teststep<level>() functions.
+Func __CDP_Report_Text($sMessage, $sLevel = "info")
+    If $g_CDP_ReportFile = -1 Or $g_CDP_ReportStackTop < 0 Then Return
+    Switch StringLower($sLevel)
+        Case "info", "warn", "error", "pass", "fail"
+            $sLevel = StringLower($sLevel)
+        Case Else
+            $sLevel = "info"
+    EndSwitch
+    $g_CDP_ReportDetail[$g_CDP_ReportStackTop] &= '<div class="msg lvl-' & $sLevel & '">' & __CDP_Report_HtmlEscape($sMessage) & '</div>'
+EndFunc
+
+; Detect an image's MIME type from the leading base64 characters (magic bytes). Defaults to PNG
+; (CDP screenshots are PNG). Handles PNG/JPEG/GIF/ICO/WEBP/BMP.
+Func __CDP_Report_ImageMime($sB64)
+    If StringLeft($sB64, 11) = "iVBORw0KGgo" Then Return "image/png"
+    If StringLeft($sB64, 4)  = "/9j/"        Then Return "image/jpeg"
+    If StringLeft($sB64, 6)  = "R0lGOD"      Then Return "image/gif"
+    If StringLeft($sB64, 6)  = "AAABAA"      Then Return "image/x-icon"
+    If StringLeft($sB64, 5)  = "UklGR"       Then Return "image/webp"
+    If StringLeft($sB64, 2)  = "Qk"          Then Return "image/bmp"
+    Return "image/png"
+EndFunc
+
+Func __CDP_Report_ImageExt($sMime)
+    Switch $sMime
+        Case "image/jpeg"
+            Return "jpg"
+        Case "image/gif"
+            Return "gif"
+        Case "image/x-icon"
+            Return "ico"
+        Case "image/webp"
+            Return "webp"
+        Case "image/bmp"
+            Return "bmp"
+        Case Else
+            Return "png"
+    EndSwitch
 EndFunc
 
 ; End the report (writes the closing tags and closes the handle). Safe to never be called (browser tolerates it).
@@ -139,8 +187,15 @@ Func __CDP_Report_HtmlHead($sTitle)
         '#nav{flex:none;width:320px;min-width:120px;overflow:auto;padding:6px;outline:none}' & _
         '#split{flex:none;width:6px;cursor:col-resize;background:#ddd}' & _
         '#split:hover{background:#bbb}' & _
-        '#detail{flex:1;min-width:0;overflow:auto;background:#fff;display:flex;align-items:flex-start;justify-content:center;padding:10px}' & _
-        '#shot{max-width:100%;height:auto;box-shadow:0 0 8px rgba(0,0,0,.5)}' & _
+        '#detail{flex:1;min-width:0;overflow:auto;background:#fff;padding:10px}' & _
+        '#detail img{max-width:100%;height:auto;box-shadow:0 0 8px rgba(0,0,0,.5);display:block;margin:6px 0}' & _
+        '.msg{position:relative;padding:3px 8px 3px 30px;margin:2px 0;white-space:pre-wrap;font-family:Consolas,Courier New,monospace;font-size:12px}' & _
+        '.msg::before{position:absolute;left:7px;top:3px;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;font-weight:bold;line-height:16px;text-align:center;font-family:Arial,sans-serif}' & _
+        '.lvl-info::before{content:"i";background:#5b9bd5}' & _
+        '.lvl-warn::before{content:"!";background:#e0a000}' & _
+        '.lvl-error::before{content:"\002715";background:#c0392b}' & _
+        '.lvl-pass::before{content:"\002713";background:#2e7d32}' & _
+        '.lvl-fail::before{content:"\002715";background:#c0392b}' & _
         '.node{margin:1px 0}' & _
         '.row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;cursor:pointer;white-space:nowrap}' & _
         '.row:hover{background:#eef}' & _
@@ -153,19 +208,19 @@ Func __CDP_Report_HtmlHead($sTitle)
         'var steps=[].slice.call(document.querySelectorAll("#data .step"));' & _
         'var byId={},roots=[];' & _
         'steps.forEach(function(el){var id=el.getAttribute("data-id");' & _
-        'byId[id]={id:id,pid:el.getAttribute("data-parent"),embed:el.getAttribute("data-embed")!=="0",' & _
-        'name:(el.querySelector("b")||{}).textContent||"",shotEl:el.querySelector("i"),kids:[]};});' & _
+        'byId[id]={id:id,pid:el.getAttribute("data-parent"),' & _
+        'name:(el.querySelector("b")||{}).textContent||"",detailEl:el.querySelector(".d"),kids:[]};});' & _
         'steps.forEach(function(el){var id=el.getAttribute("data-id"),n=byId[id];' & _
         'if(n.pid&&n.pid!=="0"&&byId[n.pid])byId[n.pid].kids.push(n);else roots.push(n);});' & _
-        'var nav=document.getElementById("nav"),img=document.getElementById("shot"),cur=null;' & _
+        'var nav=document.getElementById("nav"),detail=document.getElementById("detail"),cur=null;' & _
         'function expanded(n){return n.kids.length&&n.__kids.style.display!=="none";}' & _
         'function expand(n){if(n.kids.length){n.__kids.style.display="block";n.__tog.textContent="▼";}}' & _
         'function collapse(n){if(n.kids.length){n.__kids.style.display="none";n.__tog.textContent="▶";}}' & _
         'function select(n){cur=n;' & _
         'document.querySelectorAll("#nav .row.sel").forEach(function(r){r.classList.remove("sel")});' & _
         'n.__row.classList.add("sel");' & _
-        'var v=n.shotEl?n.shotEl.textContent:"";' & _   ; read base64/path lazily, only on select
-        'if(!v)img.removeAttribute("src");else img.src=n.embed?("data:image/png;base64,"+v):v;' & _
+        'detail.innerHTML=n.detailEl?n.detailEl.innerHTML:"";' & _
+        '[].forEach.call(detail.querySelectorAll("img[data-src]"),function(im){im.src=im.getAttribute("data-src");});' & _
         'n.__row.scrollIntoView({block:"nearest"});}' & _
         'function vis(){return [].slice.call(nav.querySelectorAll(".row")).filter(function(r){return r.offsetParent!==null;});}' & _
         'function moveVisible(dir){var rows=vis(),i=rows.indexOf(cur.__row),j=i+dir;if(j>=0&&j<rows.length)select(rows[j].__node);}' & _
@@ -191,10 +246,16 @@ Func __CDP_Report_HtmlHead($sTitle)
         'document.addEventListener("mousemove",function(e){if(!drag)return;var w=e.clientX,mx=window.innerWidth-200;if(w<150)w=150;if(w>mx)w=mx;nav.style.width=w+"px";});' & _
         'document.addEventListener("mouseup",function(){if(drag){drag=false;document.body.style.userSelect="";}});' & _
         'if(roots.length){select(roots[0]);nav.focus();}' & _
+        '(function(){var ks=[].slice.call(nav.querySelectorAll(".kids"));' & _
+        'ks.forEach(function(k){k.style.display="block";});' & _
+        'var w=nav.scrollWidth+20;' & _
+        'ks.forEach(function(k){k.style.display="none";});' & _
+        'var mx=Math.min(window.innerWidth-200,Math.round(window.innerWidth*0.6));' & _
+        'if(w>mx)w=mx;if(w<120)w=120;nav.style.width=w+"px";})();' & _
         '});</script>'
     $s &= '</head><body>'
     $s &= '<div id="hdr">' & $sTitle & '</div>'
-    $s &= '<div id="main"><div id="nav" tabindex="0"></div><div id="split"></div><div id="detail"><img id="shot"></div></div>'
+    $s &= '<div id="main"><div id="nav" tabindex="0"></div><div id="split"></div><div id="detail"></div></div>'
     $s &= '<div id="data" style="display:none">' & @CRLF
     Return $s
 EndFunc

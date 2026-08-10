@@ -500,20 +500,9 @@ EndFunc
 #region --- Browser Class ---
 
 Func _CDP_Browser_IsRunning($oSelf, $port)
-    Local $oHTTP = ObjCreate("WinHttp.WinHttpRequest.5.1")
-    If @error Then Return False
-
-    Local $url = "http://localhost:" & $port & "/json/version"
-
-    ; Attempt the GET request
-    $oHTTP.Open("GET", $url, False)
-    If @error Then Return False
-
-    $oHTTP.Send()
-    If @error Then Return False
-
-    ; If we got here, Chrome responded
-    Return True
+	$jResp = $api.get('http://localhost:' & $port & '/json/version')
+	If $jResp.status.value() <> 200 Then Return False
+	Return True
 EndFunc
 
 Func _CDP_Browser_ForceClose($oSelf, $port)
@@ -657,6 +646,7 @@ Func _CDP_Browser_Launch($oSelf, $browser = $CDPBROWSER_CHROME, $jOptions = Null
     $oState.Add("nextId",  1)
     $oState.Add("pageLoaded", False)
 
+	If $g_CDP_Browsers.Exists($port) Then $g_CDP_Browsers.Remove($port)
 	$g_CDP_Browsers.Add($port, $oState)
 
     ; Create Browser object
@@ -818,6 +808,7 @@ Func _CDP_Browser_NewHeadlessShell($oSelf)
     ; Add action methods
 
     _AutoItObject_AddMethod($oPage, "goto",      	"_CDP_Page_Goto")
+    _AutoItObject_AddMethod($oPage, "reload",    	"_CDP_Page_Reload")
     _AutoItObject_AddMethod($oPage, "locator",    	"_CDP_Page_Locator")
     _AutoItObject_AddMethod($oPage, "evaluate",  	"_CDP_Page_Evaluate")
 
@@ -891,6 +882,7 @@ Func __CDP_Page_Object($parent, $wsPort, $wsHandle, $sessionId, $targetId)
 
     ; Add action methods
     _AutoItObject_AddMethod($oPage, "goto",      	"_CDP_Page_Goto")
+    _AutoItObject_AddMethod($oPage, "reload",    	"_CDP_Page_Reload")
     _AutoItObject_AddMethod($oPage, "locator",    	"_CDP_Page_Locator")
     _AutoItObject_AddMethod($oPage, "evaluate",  	"_CDP_Page_Evaluate")
     _AutoItObject_AddMethod($oPage, "bringToFront",	"_CDP_Page_BringToFront")
@@ -936,6 +928,16 @@ EndFunc
 Func _CDP_Page_Goto($oSelf, $url, $waitForLoad = True)
 
     _CDP_SendCommand($oSelf, "Page.navigate", _JsonC_Object().add("url", $url))
+	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
+    Return $oSelf
+
+EndFunc
+
+; Reload the current page. $ignoreCache = True does a hard refresh (bypass the browser cache),
+; like Ctrl+F5. Mirrors Playwright's page.reload().
+Func _CDP_Page_Reload($oSelf, $waitForLoad = True, $ignoreCache = False)
+
+    _CDP_SendCommand($oSelf, "Page.reload", _JsonC_Object().add("ignoreCache", $ignoreCache))
 	if $waitForLoad Then _CDP_WaitForLoad($oSelf)
     Return $oSelf
 
@@ -1002,7 +1004,8 @@ Func _CDP_Page_ViewportSize($oSelf)
 EndFunc
 
 Func _CDP_Page_WaitForSelector($oSelf, $selector, $state = $CDPSTATE_ATTACHED, $timeoutMs = $cdp.config.timeout)
-    Local $t = TimerInit()
+    $retrying = False
+	Local $t = TimerInit()
     Do
         Local $el = $oSelf.locatorNow($selector)
 
@@ -1020,6 +1023,8 @@ Func _CDP_Page_WaitForSelector($oSelf, $selector, $state = $CDPSTATE_ATTACHED, $
                 If $el == Null Or Not $el.isVisible() Then Return True
         EndSwitch
 
+		if $retrying = False Then _CDP_Debug(Null, "waiting for selector " & $oSelf.selector & " ...")
+		$retrying = True
         Sleep(100)
     Until TimerDiff($t) > $timeoutMs
 
@@ -1193,6 +1198,10 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "clear", "_CDP_Locator_Clear")										; todo - Reqs CDP Commands Runtime.callFunctionOn
 	_AutoItObject_AddMethod($oLocator, "dragTo", "_CDP_Locator_DragTo")										; todo - Reqs CDP Commands DOM.getBoxModel, Input.dispatchMouseEvent
 	_AutoItObject_AddMethod($oLocator, "setInputFiles", "_CDP_Locator_SetInputFiles")						; done
+	_AutoItObject_AddMethod($oLocator, "setCodeMirror", "_CDP_Locator_SetCodeMirror")						; done
+	_AutoItObject_AddMethod($oLocator, "getCodeMirror", "_CDP_Locator_GetCodeMirror")						; done
+	_AutoItObject_AddMethod($oLocator, "selectS2Option", "_CDP_Locator_SelectS2Option")						; done
+	_AutoItObject_AddMethod($oLocator, "deselectS2Options", "_CDP_Locator_DeselectS2Options")				; done
 	_AutoItObject_AddMethod($oLocator, "dispatchEvent", "_CDP_Locator_DispatchEvent")						; todo - Reqs CDP Commands DOM.dispatchEvent
 	_AutoItObject_AddMethod($oLocator, "scrollIntoView", "_CDP_Locator_ScrollIntoView")						; done
 	_AutoItObject_AddMethod($oLocator, "scrollIntoViewIfNeeded", "_CDP_Locator_ScrollIntoViewIfNeeded")		; todo - Reqs CDP Commands DOM.scrollIntoViewIfNeeded, Runtime.callFunctionOn
@@ -1205,6 +1214,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "innerTextReplace", "_CDP_Locator_InnerTextReplace")					; done
 	_AutoItObject_AddMethod($oLocator, "innerHTML", "_CDP_Locator_InnerHTML")								; done
 	_AutoItObject_AddMethod($oLocator, "inputValue", "_CDP_Locator_InputValue")								; done
+	_AutoItObject_AddMethod($oLocator, "s2Value", "_CDP_Locator_S2Value")									; done
 	_AutoItObject_AddMethod($oLocator, "getAttribute", "_CDP_Locator_GetAttribute")							; done
 	_AutoItObject_AddMethod($oLocator, "boundingBox", "_CDP_Locator_BoundingBox")							; todo - Reqs CDP Commands DOM.getBoxModel
 	_AutoItObject_AddMethod($oLocator, "screenshot", "_CDP_Locator_Screenshot")								; todo - Reqs CDP Commands DOM.getBoxModel, Page.captureScreenshot
@@ -1244,6 +1254,7 @@ Func _CDP_Page_Locator($oSelf, $selector)
 	_AutoItObject_AddMethod($oLocator, "getByTestId", "_CDP_Locator_GetByTestId")							; todo - Reqs CDP Commands No CDP — internal selector logic
 
 	; Add properties
+	_AutoItObject_AddProperty($oLocator, "selector", $ELSCOPE_READONLY, $selector)
 	_AutoItObject_AddProperty($oLocator, "selectorExpr", $ELSCOPE_READONLY, $expr)
 	_AutoItObject_AddProperty($oLocator, "parent", $ELSCOPE_READONLY, $oSelf)
 	_AutoItObject_AddProperty($oLocator, "type", $ELSCOPE_READONLY, $CDP_PAGE)
@@ -1285,14 +1296,18 @@ EndFunc
 
 Func _CDP_Locator_Locate($oSelf, $timeout = $cdp.config.timeout)
 
+	$retrying = False
+
     ; Wait for response
     Local $t = TimerInit()
     While TimerDiff($t) < $timeout
 		If $oSelf._locateFast() <> Null Then Return $oSelf
+		if $retrying = False Then _CDP_Debug(Null, "retrying expression " & $oSelf.selectorExpr & " ...")
+		$retrying = True
         Sleep(1)
     WEnd
 
-	ConsoleWrite("Timed out." & @CRLF)
+	ConsoleWrite("... timed out." & @CRLF)
 	Return Null
 
 EndFunc
@@ -1499,6 +1514,79 @@ Func _CDP_Locator_SetInputFiles($oSelf, $vFiles)
 
 EndFunc
 
+; Set the content of a CodeMirror 5 editor. The locator may point at the .CodeMirror element itself
+; or any element inside it (e.g. the line divs) — it walks up to the instance via closest('.CodeMirror').
+; $content is passed as a CDP call argument, so no string escaping is needed (newlines/quotes/unicode ok).
+Func _CDP_Locator_SetCodeMirror($oSelf, $content)
+
+	if $oSelf._locate() = Null Then Return Null
+
+	Local $sFunc = "function(content){" & _
+		"var host=this.closest('.CodeMirror');" & _
+		"if(!host||!host.CodeMirror)return false;" & _
+		"host.CodeMirror.setValue(content);" & _
+		"return true;}"
+
+	Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", $sFunc).add("arguments", _JsonC_Array().add(_JsonC_Object().add("value", $content))).add("returnByValue", True))
+
+	; returnByValue lets us confirm a CodeMirror instance was actually found and set
+	If Not _JsonC_Object($resp).get("result").get("result").get("value").value() Then Return SetError(1, 0, Null)
+	return $oSelf
+
+EndFunc
+
+; Get the full content of a CodeMirror 5 editor — the complete document, not the virtualized DOM lines.
+; Returns the text, or "" if no CodeMirror instance was found.
+Func _CDP_Locator_GetCodeMirror($oSelf)
+
+	if $oSelf._locate() = Null Then Return Null
+
+	Local $sFunc = "function(){" & _
+		"var host=this.closest('.CodeMirror');" & _
+		"return (host&&host.CodeMirror)?host.CodeMirror.getValue():null;}"
+
+	Local $resp = _CDP_SendSync($oSelf, "Runtime.callFunctionOn", _JsonC_Object().add("objectId", $oSelf.objectId).add("functionDeclaration", $sFunc).add("returnByValue", True))
+	return _JsonC_Object($resp).get("result").get("result").get("value").value()
+
+EndFunc
+
+; Clear ALL selected values from a Select2 multi-select, without knowing them in advance.
+; Clicks each chip's "×" (select2-search-choice-close) until none are left.
+; $sContainerId = the id on the select2 container div, e.g. "s2id_uniqueRegistrationValidation".
+; Returns how many chips were removed.
+Func _CDP_Locator_DeselectS2Options($oSelf, $iMax = 50)
+    Local $iRemoved = 0
+    For $i = 1 To $iMax
+        Local $x = $oSelf.parent.locator($oSelf.selector & "//*[contains(@class,'select2-search-choice-close')]").waitFor($CDPSTATE_VISIBLE, 500)
+        If Not IsObj($x) Then ExitLoop        ; no chips left -> done
+        $x.click()                            ; removes the first chip
+        $iRemoved += 1
+        Sleep(150)                            ; let select2 re-render the choices list
+    Next
+    Return $iRemoved
+EndFunc
+
+Func _CDP_Locator_SelectS2Option($oSelf, $optionText)
+
+	if $oSelf._locate() = Null Then Return Null
+
+	$oSelf.click()
+	$oSelf.parent.locator("//div[contains(@class,'select2-drop')]//input[@class='select2-input']").sendKeys($optionText)
+	$oSelf.parent.locator("//div[contains(@class,'select2-drop')]//div[@class='select2-result-label' and normalize-space(.)='" & $optionText & "']").click()
+
+	return $oSelf
+
+EndFunc
+
+Func _CDP_Locator_S2Value($oSelf)
+
+	$oSelf._locateFast()
+	Return $oSelf.innerText()
+	;Return $oSelf.textContent()
+	;Return $oSelf.parent.locator($oSelf.selector & "/a/span").textContent()
+
+EndFunc
+
 Func _CDP_Locator_DispatchEvent($oSelf)
 
 	if $oSelf._locate() = Null Then Return Null
@@ -1663,7 +1751,7 @@ Func _CDP_Locator_Screenshot($oSelf, $sFilePath = "")
 	if StringLen($sFilePath) > 0 Then
 		Local $bPng = __CDP_Base64Decode($base64)
 		FileDelete($sFilePath)
-		FileWrite($sFilePath, $base64)
+		FileWrite($sFilePath, $bPng)
 	EndIf
 
 	Return $base64
@@ -1775,8 +1863,9 @@ EndFunc
 
 
 Func _CDP_Locator_WaitFor($this, $state = $CDPSTATE_VISIBLE, $timeoutMs = $cdp.config.timeout)
-    Local $t = TimerInit()
 
+	$retrying = False
+	Local $t = TimerInit()
     Do
 		$located = $this._locateFast()
 
@@ -1794,6 +1883,8 @@ Func _CDP_Locator_WaitFor($this, $state = $CDPSTATE_VISIBLE, $timeoutMs = $cdp.c
                 If $located == Null Or Not $located.isVisible() Then Return $located
         EndSwitch
 
+		if $retrying = False Then _CDP_Debug(Null, "waiting for selector " & $this.selector & " ...")
+		$retrying = True
         Sleep(100)
     Until TimerDiff($t) > $timeoutMs
 
@@ -1876,7 +1967,7 @@ Func test($text)
 
     if $cdp.config.video = $CDPVIDEO_ON Then
 		$g_CDP_FfmpegHandle = DllOpen("FFMpegRecorder.dll")
-		DllCall($g_CDP_FfmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $testResultsPath & "\video.webm")
+		DllCall($g_CDP_FfmpegHandle, "int", "StartRecorder", "int", 1280, "int", 720, "wstr", $testResultsPath & "\" & $text & " test run.webm")
 		$g_fChromeStartTime = 0
 	EndIf
 
@@ -1944,21 +2035,45 @@ Func teststep($text)
 
 EndFunc
 
-; Capture a screenshot NOW as the current test step's report image, instead of the automatic
-; end-of-step capture. Callable from anywhere inside a teststep block, including enclosed functions
-; (it targets the innermost open step, not a With-scoped object). Last successful call wins.
-; Attach an image to the current teststep in the report.
-;   teststepshot()          -> full-page screenshot of the active page
-;   teststepshot($locator)  -> screenshot of just that located element
-;   teststepshot($base64)   -> use an image you already captured (base64 PNG)
-Func teststepshot($target = Null)
+; Append an image to the current teststep's detail in the report. Multiple calls append in order.
+;   teststepimage()          -> full-page screenshot of the active page
+;   teststepimage($locator)  -> screenshot of just that located element
+;   teststepimage($base64)   -> an image you already have (PNG/JPEG/GIF/ICO/WEBP/BMP; format auto-detected)
+Func teststepimage($target = Null)
 	If IsObj($target) Then
-		__CDP_Report_Snap($target.screenshot())            ; a located element
+		__CDP_Report_Image($target.screenshot())           ; a located element
 	ElseIf IsString($target) And StringLen($target) > 0 Then
-		__CDP_Report_Snap($target)                         ; a pre-captured base64 PNG
+		__CDP_Report_Image($target)                        ; a pre-captured base64 image
 	Else
-		__CDP_Report_Snap()                                ; full-page screenshot
+		__CDP_Report_Image()                               ; full-page screenshot
 	EndIf
+EndFunc
+
+; Append a text line to the current teststep's detail in the report — one function per level.
+; Any mix of these (and teststepimage) appends to the step's detail in call order.
+;   teststepinfo("Colour set to red")
+;   teststepwarn("Value looks unusual, verify it")
+;   teststeperror("Expected 'red' but saw 'blue'")
+;   teststeppass("Value matched the reference config")
+;   teststepfail("Assertion failed on line 94")
+Func teststepinfo($message)
+	__CDP_Report_Text($message, "info")
+EndFunc
+
+Func teststepwarn($message)
+	__CDP_Report_Text($message, "warn")
+EndFunc
+
+Func teststeperror($message)
+	__CDP_Report_Text($message, "error")
+EndFunc
+
+Func teststeppass($message)
+	__CDP_Report_Text($message, "pass")
+EndFunc
+
+Func teststepfail($message)
+	__CDP_Report_Text($message, "fail")
 EndFunc
 
 Func _CDP_Test_Step_End($oSelf)

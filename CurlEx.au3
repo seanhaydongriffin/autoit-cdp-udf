@@ -3,7 +3,7 @@
 #include "Curl.au3"
 #include "JsonCEx.au3"
 
-Global $CookieFile = "cookie.txt"
+Global $g_CookieFile = "cookie.txt"
 
 Global $g_oCurlStatusText = ObjCreate("Scripting.Dictionary")
 $g_oCurlStatusText.Add(100, "Continue")
@@ -172,13 +172,13 @@ Func Curl_Get($sUrl, $oHeaderList = Null, $jOptions = Null)
 
 	Else
 		ConsoleWrite(Curl_Easy_StrError($Code) & @LF)
+		$bodyObj = ""
 	EndIf
 
     $jResponse = _JsonC_Object()
     $jResponse.add("status", Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE))
     $jResponse.add("statusText", $g_oCurlStatusText.Item(Curl_Easy_GetInfo($Curl, $CURLINFO_RESPONSE_CODE)))
     $jResponse.add("headers", BinaryToString(Curl_Data_Get($Header)))
-    if $bodyObj = Null Then $bodyObj = ""
     $jResponse.add("body", _JsonC_Object($bodyObj))
     $jResponse.add("contentType", $ctype)
     ;_JsonC_ObjectObjectAdd($jResponse, "contentLength", _JsonC_ObjectNewInt(12345))
@@ -350,9 +350,10 @@ Func Curl_SetOptions(ByRef $iCurl, $iHtml, $iHeader, $sUrl, $sPostData, $oHeader
         $password                                       = $jOptions.get("password").value()
     EndIf
 
-   	Curl_Easy_Setopt($iCurl, $CURLOPT_URL, $sUrl)
+   	Curl_Easy_Setopt($iCurl, $CURLOPT_URL, __Curl_Url_EncodeQueryString($sUrl))
     if $followRedirects = True Then Curl_Easy_Setopt($iCurl, $CURLOPT_FOLLOWLOCATION, 1)
     if $proxy <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_PROXY, $proxy)
+    if $cookieFile = Null And $g_CookieFile <> "" Then $cookieFile = $g_CookieFile
     if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEJAR, $cookieFile)
     if $cookieFile <> Null Then Curl_Easy_Setopt($iCurl, $CURLOPT_COOKIEFILE, $cookieFile)
 	Curl_Easy_Setopt($iCurl, $CURLOPT_WRITEFUNCTION, Curl_DataWriteCallback())
@@ -400,3 +401,49 @@ Func Curl_BuildHeaderSlist($jHeaders, ByRef $sContentType)
     Return $header_list
 EndFunc
 
+; ======================================================================
+; __Curl_Url_EncodeQueryString
+; Encodes ONLY the query parameter values of a full URL.
+; Example:
+;   Input:
+;     https://host/path?filter=OneTimeCode eq 'ABC'&limit=10
+;   Output:
+;     https://host/path?filter=OneTimeCode%20eq%20%27ABC%27&limit=10
+; ======================================================================
+Func __Curl_Url_EncodeQueryString($sUrl)
+    ; No query string ? return unchanged
+    Local $iPos = StringInStr($sUrl, "?", 0)
+    If $iPos = 0 Then Return $sUrl
+
+    ; Split base + query
+    Local $sBase = StringLeft($sUrl, $iPos - 1)
+    Local $sQuery = StringMid($sUrl, $iPos + 1)
+
+    ; Split into key/value pairs
+    Local $aPairs = StringSplit($sQuery, "&", 2)
+    Local $aOut[UBound($aPairs)]
+
+    For $i = 0 To UBound($aPairs) - 1
+        Local $sPair = $aPairs[$i]
+
+        ; Split on first "=" only
+        Local $iEq = StringInStr($sPair, "=", 0)
+        If $iEq = 0 Then
+            ; No "=" ? keep as-is
+            $aOut[$i] = $sPair
+            ContinueLoop
+        EndIf
+
+        Local $sKey = StringLeft($sPair, $iEq - 1)
+        Local $sValue = StringMid($sPair, $iEq + 1)
+
+        ; Encode only the value
+        Local $sEncodedValue = Curl_Escape($sValue)
+
+        ; Rebuild pair
+        $aOut[$i] = $sKey & "=" & $sEncodedValue
+    Next
+
+    ; Reassemble final URL
+    Return $sBase & "?" & _ArrayToString($aOut, "&")
+EndFunc
